@@ -1,0 +1,38 @@
+[package]
+name = "spotify-cli"
+version = "0.2.4"
+edition = "2024"
+
+description = "A terminal-first Spotify control surface"
+readme = "README.md"
+license = "MIT"
+
+authors = ["Dheebz"]
+repository = "https://github.com/Dheebz/spotify-cli"
+homepage = "https://github.com/Dheebz/spotify-cli"
+documentation = "https://docs.rs/spotify-cli"
+
+keywords = ["spotify", "cli", "music", "terminal"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5.27", features = ["derive"] }
+reqwest = { version = "0.12.12", default-features = false, features = [
+  "blocking",
+  "json",
+  "rustls-tls",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.22.1"
+rand = "0.8.5"
+sha2 = "0.10.8"
+url = "2.5.4"
+urlencoding = "2.1.3"
+
+[dev-dependencies]
+httpmock = "0.7"
+
+[features]
+http-tests = []

@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "deps"
+    groups:
+      all-rust-deps:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "deps"
+    groups:
+      all-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"

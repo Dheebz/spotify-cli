@@ -1,0 +1,63 @@
+name: CI (test)
+
+on:
+  push:
+    branches: [test]
+  pull_request:
+    branches: [test]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/_reusable-lint.yml
+
+  test:
+    name: Test
+    uses: ./.github/workflows/_reusable-test.yml
+    with:
+      run-integration: true
+      os-matrix: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      feature-matrix: true
+
+  security:
+    name: Security
+    uses: ./.github/workflows/_reusable-security.yml
+
+  publish-check:
+    name: Publish Check
+    uses: ./.github/workflows/_reusable-publish-check.yml
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+
+      - name: Generate coverage
+        run: cargo tarpaulin --out xml --out html
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: cobertura.xml
+          fail_ci_if_error: false
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: tarpaulin-report.html

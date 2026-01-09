@@ -1,0 +1,62 @@
+name: Fuzz Testing
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Daily at midnight UTC
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "Fuzz duration in seconds"
+        type: number
+        default: 60
+
+env:
+  FUZZ_DURATION: ${{ inputs.duration || 60 }}
+
+jobs:
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    continue-on-error: true # Non-blocking
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-fuzz
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+
+      - name: Check for fuzz targets
+        id: check-fuzz
+        run: |
+          if [ -d "fuzz" ] && [ -f "fuzz/Cargo.toml" ]; then
+            echo "has_fuzz=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_fuzz=false" >> $GITHUB_OUTPUT
+            echo "No fuzz targets found. Skipping."
+          fi
+
+      - name: List fuzz targets
+        if: steps.check-fuzz.outputs.has_fuzz == 'true'
+        run: cargo fuzz list
+
+      - name: Run fuzz targets
+        if: steps.check-fuzz.outputs.has_fuzz == 'true'
+        run: |
+          for target in $(cargo fuzz list); do
+            echo "Fuzzing $target for $FUZZ_DURATION seconds..."
+            cargo fuzz run "$target" -- -max_total_time=$FUZZ_DURATION || true
+          done
+
+      - name: Upload crash artifacts
+        if: steps.check-fuzz.outputs.has_fuzz == 'true' && failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: fuzz/artifacts/

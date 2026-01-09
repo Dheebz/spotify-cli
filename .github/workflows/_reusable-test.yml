@@ -1,0 +1,94 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      run-integration:
+        description: "Run integration tests"
+        type: boolean
+        default: false
+      os-matrix:
+        description: "JSON array of OS runners"
+        type: string
+        default: '["ubuntu-latest"]'
+      feature-matrix:
+        description: "Run feature matrix tests"
+        type: boolean
+        default: false
+
+jobs:
+  unit:
+    name: Unit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJson(inputs.os-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run unit tests
+        run: cargo test --lib
+
+  doc:
+    name: Doc Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJson(inputs.os-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run doc tests
+        run: cargo test --doc
+
+  integration:
+    name: Integration (${{ matrix.os }})
+    if: inputs.run-integration
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJson(inputs.os-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run integration tests
+        run: cargo test --test '*'
+
+  features:
+    name: Features (${{ matrix.features }})
+    if: inputs.feature-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - "--all-features"
+          - "--no-default-features"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build with ${{ matrix.features || 'default features' }}
+        run: cargo build ${{ matrix.features }}
+
+      - name: Test with ${{ matrix.features || 'default features' }}
+        run: cargo test --lib ${{ matrix.features }}

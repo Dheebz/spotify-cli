@@ -1,0 +1,55 @@
+name: CI (deps)
+
+on:
+  push:
+    branches: [deps]
+  pull_request:
+    branches: [deps]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/_reusable-lint.yml
+
+  test:
+    name: Test
+    uses: ./.github/workflows/_reusable-test.yml
+    with:
+      run-integration: true
+      os-matrix: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      feature-matrix: true
+
+  security:
+    name: Security
+    uses: ./.github/workflows/_reusable-security.yml
+
+  auto-merge:
+    name: Auto Merge to Main
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/deps'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge deps into main
+        run: |
+          git checkout main
+          git merge deps --no-edit
+          git push origin main

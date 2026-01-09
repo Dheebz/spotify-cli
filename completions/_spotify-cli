@@ -1,0 +1,137 @@
+#compdef spotify-cli
+
+_spotify-cli() {
+  local -a global_flags
+  global_flags=("--json" "-v" "--no-trunc" "--width")
+
+  if [[ ${words[$CURRENT]} == -* ]]; then
+    _describe -t flags "flags" global_flags
+    return
+  fi
+
+  if (( CURRENT == 2 )); then
+    _values "object" auth player track search album artist playlist device help system
+    return
+  fi
+
+  local cmd1=$words[2]
+  case "$cmd1" in
+    auth)
+      if (( CURRENT == 3 )); then
+        _values "command" login status scopes logout
+        return
+      fi
+      if [[ ${words[$CURRENT]} == -* ]]; then
+        _describe -t flags "flags" --client-id
+      fi
+      ;;
+    player)
+      if (( CURRENT == 3 )); then
+        _values "command" play pause next prev status
+      fi
+      ;;
+    track)
+      if (( CURRENT == 3 )); then
+        _values "command" like unlike info
+      fi
+      ;;
+    search)
+      if [[ ${words[$CURRENT]} == -* ]]; then
+        _describe -t flags "flags" --type --fuzzy --user --limit --pick --last --play
+      fi
+      ;;
+    album|artist)
+      if (( CURRENT == 3 )); then
+        _values "command" info play
+        return
+      fi
+      if [[ ${words[$CURRENT]} == -* ]]; then
+        _describe -t flags "flags" --fuzzy --user --pick --last --search
+      fi
+      ;;
+    playlist)
+      if (( CURRENT == 3 )); then
+        _values "command" list info play add follow unfollow pin
+        return
+      fi
+      if [[ ${words[$CURRENT-1]} == "--sort" ]]; then
+        _values "sort" name owner public collaborative
+        return
+      fi
+      case $words[3] in
+        list)
+          if [[ ${words[$CURRENT]} == -* ]]; then
+            _describe -t flags "flags" --collaborative --owned --public --private --sort
+          fi
+          ;;
+        info|play|add|follow|unfollow)
+          if [[ ${words[$CURRENT]} == -* ]]; then
+            _describe -t flags "flags" --fuzzy --user --pick --last
+            return
+          fi
+          local -a playlists
+          playlists=("${(@f)$(spotify-cli complete playlist 2>/dev/null)}")
+          if (( ${#playlists[@]} )); then
+            compadd -Q -a playlists
+          fi
+          ;;
+        pin)
+          if (( CURRENT == 4 )); then
+            _values "command" add remove list play
+            return
+          fi
+          case $words[4] in
+            remove|play)
+              local -a pins
+              pins=("${(@f)$(spotify-cli complete pin 2>/dev/null)}")
+              if (( ${#pins[@]} )); then
+                compadd -Q -a pins
+              fi
+              ;;
+          esac
+          ;;
+      esac
+      ;;
+    device)
+      if (( CURRENT == 3 )); then
+        _values "command" list set
+        return
+      fi
+      if [[ $words[3] == "list" && ${words[$CURRENT]} == -* ]]; then
+        _describe -t flags "flags" --live
+      fi
+      if [[ $words[3] == "set" ]]; then
+        local -a devices
+        devices=("${(@f)$(spotify-cli complete device 2>/dev/null)}")
+        if (( ${#devices[@]} )); then
+          compadd -Q -a devices
+        fi
+      fi
+      ;;
+    completions)
+      if (( CURRENT == 3 )); then
+        _values "shell" bash zsh fish
+      fi
+      ;;
+    system)
+      if (( CURRENT == 3 )); then
+        _values "command" sync cache completions
+        return
+      fi
+      case $words[3] in
+        cache)
+          if (( CURRENT == 4 )); then
+            _values "command" status country user
+          fi
+          ;;
+        completions)
+          if (( CURRENT == 4 )); then
+            _values "shell" bash zsh fish
+          fi
+          ;;
+      esac
+      ;;
+  esac
+}
+
+compdef _spotify-cli spotify-cli

@@ -1,0 +1,29 @@
+# Build artifacts
+/target
+
+# Coverage reports
+*.profraw
+*.profdata
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Fuzz artifacts
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local

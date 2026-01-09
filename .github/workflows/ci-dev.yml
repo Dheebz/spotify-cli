@@ -1,0 +1,25 @@
+name: CI (dev)
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/_reusable-lint.yml
+
+  test:
+    name: Test
+    uses: ./.github/workflows/_reusable-test.yml
+    with:
+      run-integration: false
+      os-matrix: '["ubuntu-latest"]'
+      feature-matrix: false

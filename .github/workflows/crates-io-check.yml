@@ -1,0 +1,21 @@
+name: Crates.io Check
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Install Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install from crates.io
+        run: cargo install spotify-cli
+
+      - name: Verify installation
+        run: |
+          spotify-cli --version
+          spotify-cli --help

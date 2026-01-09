@@ -1,0 +1,39 @@
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # Daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  bench:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    continue-on-error: true # Non-blocking
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check for benchmarks
+        id: check-bench
+        run: |
+          if [ -d "benches" ] || grep -q '\[\[bench\]\]' Cargo.toml; then
+            echo "has_bench=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_bench=false" >> $GITHUB_OUTPUT
+            echo "No benchmarks found. Skipping."
+          fi
+
+      - name: Run benchmarks
+        if: steps.check-bench.outputs.has_bench == 'true'
+        run: cargo bench --all-features -- --noplot
+
+      - name: Upload benchmark results
+        if: steps.check-bench.outputs.has_bench == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: target/criterion/
