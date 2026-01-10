@@ -99,6 +99,11 @@ impl PlaybackClient {
         self.send(Method::PUT, &path, None)
     }
 
+    pub fn set_volume(&self, percent: u32) -> Result<()> {
+        let path = format!("/me/player/volume?volume_percent={}", percent);
+        self.send(Method::PUT, &path, None)
+    }
+
     pub fn queue(&self, limit: u32) -> Result<QueueState> {
         let token = self.auth.token()?;
         let url = format!("{}/me/player/queue", api_base());

@@ -99,8 +99,9 @@ pub fn now_playing(status: PlayerStatus) -> Result<()> {
 fn playback_context_line(status: &PlayerStatus) -> Option<String> {
     let repeat = status.repeat_state.as_deref();
     let shuffle = status.shuffle_state;
+    let volume = status.device.as_ref().and_then(|d| d.volume_percent);
 
-    if repeat.is_none() && shuffle.is_none() {
+    if repeat.is_none() && shuffle.is_none() && volume.is_none() {
         return None;
     }
 
@@ -110,10 +111,13 @@ fn playback_context_line(status: &PlayerStatus) -> Option<String> {
         Some(false) => "off",
         None => "unknown",
     };
+    let volume_text = volume
+        .map(|v| format!("{}%", v))
+        .unwrap_or_else(|| "unknown".to_string());
 
     Some(format!(
-        "repeat: {}, shuffle: {}",
-        repeat_text, shuffle_text
+        "repeat: {}, shuffle: {}, volume: {}",
+        repeat_text, shuffle_text, volume_text
     ))
 }
 

@@ -21,6 +21,10 @@ pub enum PlayerCommand {
         #[arg(value_enum, help = "Repeat state")]
         state: RepeatStateArg,
     },
+    Volume {
+        #[arg(value_name = "PERCENT", help = "Volume level (0-100). Omit to show current volume")]
+        percent: Option<u32>,
+    },
 }
 
 pub fn handle(command: PlayerCommand, ctx: &AppContext) -> Result<()> {
@@ -67,6 +71,26 @@ pub fn handle(command: PlayerCommand, ctx: &AppContext) -> Result<()> {
             let message = format!("Repeat: {}", state.as_str());
             ctx.output.action("player_repeat", &message)
         }
+        PlayerCommand::Volume { percent } => match percent {
+            Some(level) => {
+                if level > 100 {
+                    anyhow::bail!("volume must be between 0 and 100");
+                }
+                playback.set_volume(level)?;
+                let message = format!("Volume: {}%", level);
+                ctx.output.action("player_volume", &message)
+            }
+            None => {
+                let status = playback.status()?;
+                let volume = status
+                    .device
+                    .and_then(|d| d.volume_percent)
+                    .map(|v| format!("{}%", v))
+                    .unwrap_or_else(|| "unknown".to_string());
+                let message = format!("Volume: {}", volume);
+                ctx.output.action("player_volume", &message)
+            }
+        },
     }
 }
 
