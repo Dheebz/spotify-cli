@@ -1,12 +1,16 @@
 #[macro_use]
 mod macros;
 
+mod albums;
 mod audiobooks;
 mod auth;
 mod categories;
 mod chapters;
 mod episodes;
+mod follow;
 mod library;
+mod markets;
+pub(crate) mod now_playing;
 mod pin;
 mod player;
 mod playlist;
@@ -15,13 +19,15 @@ mod search;
 mod shows;
 mod user;
 
-// Re-export all public functions for flat access from main.rs
+pub use albums::*;
 pub use audiobooks::*;
 pub use auth::*;
 pub use categories::*;
 pub use chapters::*;
 pub use episodes::*;
+pub use follow::*;
 pub use library::*;
+pub use markets::*;
 pub use pin::*;
 pub use player::*;
 pub use playlist::*;
@@ -29,10 +35,6 @@ pub use resource::*;
 pub use search::*;
 pub use shows::*;
 pub use user::*;
-
-// ============================================================================
-// Shared Types
-// ============================================================================
 
 /// Search filters for Spotify API field queries
 #[derive(Default)]
@@ -53,12 +55,10 @@ impl SearchFilters {
     pub fn build_query(&self, base_query: &str) -> String {
         let mut parts: Vec<String> = Vec::new();
 
-        // Start with the base query if non-empty
         if !base_query.is_empty() {
             parts.push(base_query.to_string());
         }
 
-        // Add field filters
         if let Some(ref artist) = self.artist {
             parts.push(format!("artist:{}", artist));
         }
@@ -104,14 +104,10 @@ impl SearchFilters {
     }
 }
 
-// ============================================================================
-// Shared Helpers
-// ============================================================================
-
 use std::future::Future;
 
 use crate::http::api::SpotifyApi;
-use crate::io::output::Response;
+use crate::io::output::{ErrorKind, Response};
 use crate::storage::config::Config;
 use crate::storage::pins::{Pin, PinStore};
 use crate::storage::token_store::TokenStore;
@@ -119,10 +115,10 @@ use crate::storage::token_store::TokenStore;
 /// Initialize a TokenStore with standardized error handling
 pub(crate) fn init_token_store() -> Result<TokenStore, Response> {
     TokenStore::new().map_err(|e| {
-        Response::error_with_details(
+        Response::err_with_details(
             500,
             "Failed to initialize token store",
-            "storage_error",
+            ErrorKind::Storage,
             e.to_string(),
         )
     })
@@ -131,10 +127,10 @@ pub(crate) fn init_token_store() -> Result<TokenStore, Response> {
 /// Initialize a PinStore with standardized error handling
 pub(crate) fn init_pin_store() -> Result<PinStore, Response> {
     PinStore::new().map_err(|e| {
-        Response::error_with_details(
+        Response::err_with_details(
             500,
             "Failed to load pin store",
-            "storage_error",
+            ErrorKind::Storage,
             e.to_string(),
         )
     })
@@ -143,7 +139,7 @@ pub(crate) fn init_pin_store() -> Result<PinStore, Response> {
 /// Load Config with standardized error handling
 pub(crate) fn load_config() -> Result<Config, Response> {
     Config::load().map_err(|e| {
-        Response::error_with_details(500, "Failed to load config", "config_error", e.to_string())
+        Response::err_with_details(500, "Failed to load config", ErrorKind::Config, e.to_string())
     })
 }
 
@@ -152,14 +148,14 @@ pub(crate) async fn get_authenticated_client() -> Result<SpotifyApi, Response> {
     let token_store = init_token_store()?;
 
     let token = token_store.load().map_err(|_| {
-        Response::error(401, "Not logged in. Run: spotify-cli auth login", "auth_error")
+        Response::err(401, "Not logged in. Run: spotify-cli auth login", ErrorKind::Auth)
     })?;
 
     if token.is_expired() {
-        return Err(Response::error(
+        return Err(Response::err(
             401,
             "Token expired. Run: spotify-cli auth refresh",
-            "auth_error",
+            ErrorKind::Auth,
         ));
     }
 

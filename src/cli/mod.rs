@@ -1,6 +1,17 @@
 pub mod commands;
 
-use clap::{Parser, Subcommand};
+use std::io;
+
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
+
+pub use clap_complete::Shell as CompletionShell;
+
+/// Generate shell completion script to stdout
+pub fn print_completions(shell: Shell) {
+    let mut cmd = Cli::command();
+    generate(shell, &mut cmd, "spotify-cli", &mut io::stdout());
+}
 
 #[derive(Parser)]
 #[command(name = "spotify-cli")]
@@ -12,6 +23,10 @@ pub struct Cli {
     /// Output JSON response (silent if not specified)
     #[arg(long, short = 'j', global = true)]
     pub json: bool,
+
+    /// Enable verbose logging (use -vv for debug, -vvv for trace)
+    #[arg(long, short = 'v', global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
 }
 
 #[derive(Subcommand)]
@@ -21,7 +36,8 @@ pub enum Command {
         #[command(subcommand)]
         command: AuthCommand,
     },
-    /// Player controls
+    /// Player controls (alias: p)
+    #[command(alias = "p")]
     Player {
         #[command(subcommand)]
         command: PlayerCommand,
@@ -31,7 +47,8 @@ pub enum Command {
         #[command(subcommand)]
         command: PinCommand,
     },
-    /// Search Spotify and pinned resources
+    /// Search Spotify and pinned resources (alias: s)
+    #[command(alias = "s")]
     Search {
         /// Search query (can be empty if using filters)
         #[arg(default_value = "")]
@@ -80,17 +97,20 @@ pub enum Command {
         #[arg(long, short = 'p')]
         play: bool,
     },
-    /// Manage playlists
+    /// Manage playlists (alias: pl)
+    #[command(alias = "pl")]
     Playlist {
         #[command(subcommand)]
         command: PlaylistCommand,
     },
-    /// Manage your library (liked songs)
+    /// Manage your library (liked songs) (alias: lib)
+    #[command(alias = "lib")]
     Library {
         #[command(subcommand)]
         command: LibraryCommand,
     },
-    /// Get info about track, album, or artist (defaults to now playing)
+    /// Get info about track, album, or artist (defaults to now playing) (alias: i)
+    #[command(alias = "i")]
     Info {
         #[command(subcommand)]
         command: InfoCommand,
@@ -115,6 +135,11 @@ pub enum Command {
         #[command(subcommand)]
         command: AudiobookCommand,
     },
+    /// Manage saved albums
+    Album {
+        #[command(subcommand)]
+        command: AlbumCommand,
+    },
     /// Get audiobook chapter details
     Chapter {
         #[command(subcommand)]
@@ -124,6 +149,19 @@ pub enum Command {
     Category {
         #[command(subcommand)]
         command: CategoryCommand,
+    },
+    /// Follow/unfollow artists and users
+    Follow {
+        #[command(subcommand)]
+        command: FollowCommand,
+    },
+    /// List available Spotify markets (countries)
+    Markets,
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
     },
 }
 
@@ -143,11 +181,17 @@ pub enum UserCommand {
         #[arg(long, short = 'l', default_value = "20")]
         limit: u8,
     },
+    /// Get another user's profile
+    Get {
+        /// Spotify username
+        user_id: String,
+    },
 }
 
 #[derive(Subcommand)]
 pub enum PlaylistCommand {
-    /// List your playlists
+    /// List your playlists (alias: ls)
+    #[command(alias = "ls")]
     List {
         /// Number of playlists to return (default 20, max 50)
         #[arg(long, short = 'l', default_value = "20")]
@@ -184,6 +228,9 @@ pub enum PlaylistCommand {
         /// Position to insert tracks (default: end)
         #[arg(long, short = 'p')]
         position: Option<u32>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Remove tracks from a playlist
     Remove {
@@ -192,6 +239,9 @@ pub enum PlaylistCommand {
         /// Track URIs to remove
         #[arg(required = true)]
         uris: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Edit playlist details
     Edit {
@@ -245,6 +295,25 @@ pub enum PlaylistCommand {
         #[arg(long, short = 'n')]
         name: Option<String>,
     },
+    /// Browse featured playlists
+    Featured {
+        /// Number of playlists to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
+    },
+    /// Get playlist cover image URL
+    Cover {
+        /// Playlist ID, URL, or pin alias
+        playlist: String,
+    },
+    /// Get another user's playlists
+    User {
+        /// Spotify username
+        user_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -293,11 +362,14 @@ pub enum AuthCommand {
 
 #[derive(Subcommand)]
 pub enum PlayerCommand {
-    /// Skip to next track
+    /// Skip to next track (alias: n)
+    #[command(alias = "n")]
     Next,
-    /// Skip to previous track
+    /// Skip to previous track (alias: prev)
+    #[command(alias = "prev")]
     Previous,
-    /// Toggle playback (play/pause)
+    /// Toggle playback (play/pause) (alias: t)
+    #[command(alias = "t")]
     Toggle,
     /// Start or resume playback
     Play {
@@ -310,18 +382,21 @@ pub enum PlayerCommand {
     },
     /// Pause playback
     Pause,
-    /// Get current playback status
+    /// Get current playback status (alias: st)
+    #[command(alias = "st")]
     Status {
         /// Output only the ID (for piping): track, album, or artist
         #[arg(long, value_parser = ["track", "album", "artist"])]
         id_only: Option<String>,
     },
-    /// Manage playback devices
+    /// Manage playback devices (alias: dev)
+    #[command(alias = "dev")]
     Devices {
         #[command(subcommand)]
         command: DevicesCommand,
     },
-    /// Manage playback queue
+    /// Manage playback queue (alias: q)
+    #[command(alias = "q")]
     Queue {
         #[command(subcommand)]
         command: QueueCommand,
@@ -331,25 +406,29 @@ pub enum PlayerCommand {
         /// Position: seconds (90), time (1:30), or explicit (90s, 5000ms)
         position: String,
     },
-    /// Set repeat mode
+    /// Set repeat mode (alias: rep)
+    #[command(alias = "rep")]
     Repeat {
         /// Repeat mode: off, track, or context
         #[arg(value_parser = ["off", "track", "context"])]
         mode: String,
     },
-    /// Set playback volume
+    /// Set playback volume (alias: vol)
+    #[command(alias = "vol")]
     Volume {
         /// Volume percentage (0-100)
         #[arg(value_parser = clap::value_parser!(u8).range(0..=100))]
         percent: u8,
     },
-    /// Toggle shuffle mode
+    /// Toggle shuffle mode (alias: sh)
+    #[command(alias = "sh")]
     Shuffle {
         /// Shuffle state: on or off
         #[arg(value_parser = ["on", "off"])]
         state: String,
     },
-    /// Get recently played tracks
+    /// Get recently played tracks (alias: rec)
+    #[command(alias = "rec")]
     Recent,
 }
 
@@ -366,7 +445,8 @@ pub enum DevicesCommand {
 
 #[derive(Subcommand)]
 pub enum QueueCommand {
-    /// List current queue
+    /// List current queue (alias: ls)
+    #[command(alias = "ls")]
     List,
     /// Add item to queue
     Add {
@@ -380,7 +460,8 @@ pub enum QueueCommand {
 
 #[derive(Subcommand)]
 pub enum LibraryCommand {
-    /// List saved tracks (liked songs)
+    /// List saved tracks (liked songs) (alias: ls)
+    #[command(alias = "ls")]
     List {
         /// Number of tracks to return (default 20, max 50)
         #[arg(long, short = 'l', default_value = "20")]
@@ -396,12 +477,18 @@ pub enum LibraryCommand {
         /// Save the currently playing track
         #[arg(long, short = 'n')]
         now_playing: bool,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Remove tracks from library (unlike songs)
     Remove {
         /// Track IDs to remove
         #[arg(required = true)]
         ids: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Check if tracks are in library
     Check {
@@ -437,11 +524,23 @@ pub enum InfoCommand {
         #[arg(long)]
         id_only: bool,
         /// Get artist's top tracks instead of details
-        #[arg(long, short = 't')]
+        #[arg(long, short = 't', conflicts_with_all = ["albums", "related"])]
         top_tracks: bool,
+        /// Get artist's albums instead of details
+        #[arg(long, short = 'a', conflicts_with_all = ["top_tracks", "related"])]
+        albums: bool,
+        /// Get related artists instead of details
+        #[arg(long, short = 'r', conflicts_with_all = ["top_tracks", "albums"])]
+        related: bool,
         /// Market for top tracks (ISO 3166-1 alpha-2 country code)
         #[arg(long, short = 'm', default_value = "US")]
         market: String,
+        /// Number of albums to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for album pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
     },
 }
 
@@ -585,6 +684,115 @@ pub enum ChapterCommand {
 }
 
 #[derive(Subcommand)]
+pub enum AlbumCommand {
+    /// List saved albums
+    List {
+        /// Number of albums to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
+    },
+    /// Get album tracks
+    Tracks {
+        /// Album ID or URL
+        id: String,
+        /// Number of tracks to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
+    },
+    /// Save albums to library
+    Save {
+        /// Album IDs to save
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+    /// Remove albums from library
+    Remove {
+        /// Album IDs to remove
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+    /// Check if albums are in library
+    Check {
+        /// Album IDs to check
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+    /// Browse new album releases
+    NewReleases {
+        /// Number of albums to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum FollowCommand {
+    /// Follow artists
+    Artist {
+        /// Artist IDs to follow
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Follow users
+    User {
+        /// User IDs to follow
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Unfollow artists
+    UnfollowArtist {
+        /// Artist IDs to unfollow
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Unfollow users
+    UnfollowUser {
+        /// User IDs to unfollow
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// List followed artists
+    List {
+        /// Number of artists to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+    },
+    /// Check if following artists
+    CheckArtist {
+        /// Artist IDs to check
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+    /// Check if following users
+    CheckUser {
+        /// User IDs to check
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum CategoryCommand {
     /// List browse categories
     List {
@@ -599,5 +807,16 @@ pub enum CategoryCommand {
     Get {
         /// Category name or ID (e.g., "pop", "rock", "focus", "gaming", "dinner")
         id: String,
+    },
+    /// Get playlists for a category
+    Playlists {
+        /// Category ID
+        id: String,
+        /// Number of playlists to return (default 20, max 50)
+        #[arg(long, short = 'l', default_value = "20")]
+        limit: u8,
+        /// Offset for pagination
+        #[arg(long, short = 'o', default_value = "0")]
+        offset: u32,
     },
 }

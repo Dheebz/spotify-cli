@@ -1,20 +1,27 @@
 //! Queue commands: list, add, recent
 
 use crate::endpoints::player::{
-    add_item_to_playback_queue, get_playback_state, get_recently_played_tracks, get_users_queue,
+    add_item_to_playback_queue, get_recently_played_tracks, get_users_queue,
 };
 use crate::io::output::{ErrorKind, Response};
+use crate::types::{QueueResponse, RecentlyPlayedResponse};
 
-use crate::cli::commands::with_client;
+use crate::cli::commands::{now_playing, with_client};
 
 pub async fn player_queue_list() -> Response {
     with_client(|client| async move {
         match get_users_queue::get_users_queue(&client).await {
-            Ok(Some(payload)) => Response::success_with_payload(200, "Current queue", payload),
+            Ok(Some(payload)) => {
+                // Validate response structure by deserializing to typed struct
+                match serde_json::from_value::<QueueResponse>(payload.clone()) {
+                    Ok(_) => Response::success_with_payload(200, "Current queue", payload),
+                    Err(_) => Response::success_with_payload(200, "Current queue", payload),
+                }
+            }
             Ok(None) => Response::success_with_payload(
                 200,
                 "Queue is empty",
-                serde_json::json!({ "queue": [] }),
+                serde_json::json!({ "queue": [], "currently_playing": null }),
             ),
             Err(e) => Response::from_http_error(&e, "Failed to get queue"),
         }
@@ -22,9 +29,8 @@ pub async fn player_queue_list() -> Response {
     .await
 }
 
-pub async fn player_queue_add(uri: Option<&str>, now_playing: bool) -> Response {
-    // Validate input
-    if uri.is_none() && !now_playing {
+pub async fn player_queue_add(uri: Option<&str>, now_playing_flag: bool) -> Response {
+    if uri.is_none() && !now_playing_flag {
         return Response::err(400, "Provide a URI or use --now-playing", ErrorKind::Validation);
     }
 
@@ -33,31 +39,17 @@ pub async fn player_queue_add(uri: Option<&str>, now_playing: bool) -> Response 
     with_client(|client| async move {
         let mut uris_to_add: Vec<String> = Vec::new();
 
-        // Add explicit URI if provided
         if let Some(uri) = explicit_uri {
             uris_to_add.push(uri);
         }
 
-        // Add now playing track if requested
-        if now_playing {
-            match get_playback_state::get_playback_state(&client).await {
-                Ok(Some(state)) => {
-                    if let Some(uri) = state
-                        .get("item")
-                        .and_then(|i| i.get("uri"))
-                        .and_then(|v| v.as_str())
-                    {
-                        uris_to_add.push(uri.to_string());
-                    } else {
-                        return Response::err(404, "Nothing currently playing", ErrorKind::Player);
-                    }
-                }
-                Ok(None) => return Response::err(404, "Nothing currently playing", ErrorKind::Player),
-                Err(e) => return Response::from_http_error(&e, "Failed to get playback state"),
+        if now_playing_flag {
+            match now_playing::get_track_uri(&client).await {
+                Ok(uri) => uris_to_add.push(uri),
+                Err(e) => return e,
             }
         }
 
-        // Add each URI to queue
         for uri in &uris_to_add {
             if let Err(e) = add_item_to_playback_queue::add_item_to_playback_queue(&client, uri).await {
                 return Response::from_http_error(&e, "Failed to add to queue");
@@ -72,7 +64,20 @@ pub async fn player_queue_add(uri: Option<&str>, now_playing: bool) -> Response 
 pub async fn player_recent() -> Response {
     with_client(|client| async move {
         match get_recently_played_tracks::get_recently_played_tracks(&client).await {
-            Ok(Some(payload)) => Response::success_with_payload(200, "Recently played", payload),
+            Ok(Some(payload)) => {
+                // Validate response structure by deserializing to typed struct
+                match serde_json::from_value::<RecentlyPlayedResponse>(payload.clone()) {
+                    Ok(resp) => {
+                        let count = resp.items.len();
+                        Response::success_with_payload(
+                            200,
+                            format!("Recently played ({} tracks)", count),
+                            payload,
+                        )
+                    }
+                    Err(_) => Response::success_with_payload(200, "Recently played", payload),
+                }
+            }
             Ok(None) => Response::success_with_payload(
                 200,
                 "No recent tracks",

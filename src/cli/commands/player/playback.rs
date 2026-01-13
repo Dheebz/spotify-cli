@@ -1,11 +1,9 @@
 //! Playback control commands: play, pause, toggle, next, previous
 
-use crate::endpoints::player::{
-    get_playback_state, pause_playback, skip_to_next, skip_to_previous, start_resume_playback,
-};
+use crate::endpoints::player::{pause_playback, skip_to_next, skip_to_previous, start_resume_playback};
 use crate::io::output::{ErrorKind, Response};
 
-use crate::cli::commands::{init_pin_store, with_client};
+use crate::cli::commands::{init_pin_store, now_playing, with_client};
 
 /// Convert a Spotify URL to a Spotify URI, or return input if already a URI
 fn url_to_uri(input: &str) -> String {
@@ -47,27 +45,21 @@ pub async fn player_previous() -> Response {
 
 pub async fn player_toggle() -> Response {
     with_client(|client| async move {
-        match get_playback_state::get_playback_state(&client).await {
-            Ok(Some(state)) => {
-                let is_playing = state
-                    .get("is_playing")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
+        let playing = match now_playing::is_playing(&client).await {
+            Ok(p) => p,
+            Err(e) => return e,
+        };
 
-                if is_playing {
-                    match pause_playback::pause_playback(&client).await {
-                        Ok(_) => Response::success(204, "Playback paused"),
-                        Err(e) => Response::from_http_error(&e, "Failed to pause playback"),
-                    }
-                } else {
-                    match start_resume_playback::start_resume_playback(&client, None, None).await {
-                        Ok(_) => Response::success(204, "Playback started"),
-                        Err(e) => Response::from_http_error(&e, "Failed to start playback"),
-                    }
-                }
+        if playing {
+            match pause_playback::pause_playback(&client).await {
+                Ok(_) => Response::success(204, "Playback paused"),
+                Err(e) => Response::from_http_error(&e, "Failed to pause playback"),
             }
-            Ok(None) => Response::err(404, "No active playback device", ErrorKind::Player),
-            Err(e) => Response::from_http_error(&e, "Failed to get playback state"),
+        } else {
+            match start_resume_playback::start_resume_playback(&client, None, None).await {
+                Ok(_) => Response::success(204, "Playback started"),
+                Err(e) => Response::from_http_error(&e, "Failed to start playback"),
+            }
         }
     })
     .await

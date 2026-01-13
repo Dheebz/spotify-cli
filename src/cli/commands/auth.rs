@@ -2,8 +2,11 @@ use super::{init_token_store, load_config};
 use crate::io::output::{ErrorKind, Response};
 use crate::oauth::flow::OAuthFlow;
 use crate::{auth_error, storage_error};
+use tracing::{debug, warn};
 
 pub async fn auth_login(force: bool) -> Response {
+    debug!(force = force, "Starting login flow");
+
     let config = match load_config() {
         Ok(c) => c,
         Err(e) => return e,
@@ -14,11 +17,10 @@ pub async fn auth_login(force: bool) -> Response {
         Err(e) => return e,
     };
 
-    // If not forcing, check if we already have a valid token or can refresh
     if !force
         && let Ok(token) = token_store.load() {
+            debug!(expired = token.is_expired(), "Found existing token");
             if !token.is_expired() {
-                // Already have a valid token
                 return Response::success_with_payload(
                     200,
                     "Already logged in",
@@ -28,7 +30,6 @@ pub async fn auth_login(force: bool) -> Response {
                 );
             }
 
-            // Token expired, try to refresh
             if let Some(refresh_token) = &token.refresh_token {
                 let flow = OAuthFlow::new(config.client_id().to_string());
                 match flow.refresh(refresh_token).await {
@@ -45,14 +46,12 @@ pub async fn auth_login(force: bool) -> Response {
                         );
                     }
                     Err(e) => {
-                        // Refresh failed - log and fall through to browser flow
-                        eprintln!("Note: Token refresh failed ({}), opening browser login...", e);
+                        warn!(error = %e, "Token refresh failed, opening browser login");
                     }
                 }
             }
         }
 
-    // No valid token or force flag - do browser flow
     let flow = OAuthFlow::new(config.client_id().to_string());
     match flow.authenticate().await {
         Ok(token) => {

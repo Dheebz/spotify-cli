@@ -20,7 +20,6 @@ use urlencoding::encode;
 
 /// Spotify API endpoint paths
 pub enum Endpoint<'a> {
-    // Player endpoints
     PlayerState,
     PlayerCurrentlyPlaying,
     PlayerPlay,
@@ -36,7 +35,6 @@ pub enum Endpoint<'a> {
     PlayerShuffle { state: bool },
     PlayerRepeat { state: &'a str },
 
-    // Playlist endpoints
     Playlist { id: &'a str },
     PlaylistTracks { id: &'a str },
     PlaylistItems { id: &'a str, limit: u8, offset: u32 },
@@ -47,34 +45,28 @@ pub enum Endpoint<'a> {
     FeaturedPlaylists { limit: u8, offset: u32 },
     CategoryPlaylists { category_id: &'a str, limit: u8, offset: u32 },
 
-    // Library endpoints (tracks)
     SavedTracks { limit: u8, offset: u32 },
     SavedTracksIds { ids: &'a str },
     SavedTracksContains { ids: &'a str },
 
-    // Library endpoints (albums)
     SavedAlbums { limit: u8, offset: u32 },
     SavedAlbumsIds { ids: &'a str },
     SavedAlbumsContains { ids: &'a str },
 
-    // Track endpoints
     Track { id: &'a str },
     Tracks { ids: &'a str },
 
-    // Album endpoints
     Album { id: &'a str },
     Albums { ids: &'a str },
     AlbumTracks { id: &'a str, limit: u8, offset: u32 },
     NewReleases { limit: u8, offset: u32 },
 
-    // Artist endpoints
     Artist { id: &'a str },
     Artists { ids: &'a str },
     ArtistTopTracks { id: &'a str, market: &'a str },
     ArtistAlbums { id: &'a str, limit: u8, offset: u32 },
     ArtistRelatedArtists { id: &'a str },
 
-    // User endpoints
     CurrentUser,
     UserProfile { user_id: &'a str },
     UserTopItems { item_type: &'a str, time_range: &'a str, limit: u8, offset: u32 },
@@ -84,17 +76,13 @@ pub enum Endpoint<'a> {
     FollowPlaylist { playlist_id: &'a str },
     FollowPlaylistContains { playlist_id: &'a str, ids: &'a str },
 
-    // Category endpoints
     Category { id: &'a str },
     Categories { limit: u8, offset: u32 },
 
-    // Markets endpoint
     Markets,
 
-    // Search endpoint
     Search { query: &'a str, types: &'a str, limit: u8 },
 
-    // Show endpoints
     Show { id: &'a str },
     Shows { ids: &'a str },
     ShowEpisodes { id: &'a str, limit: u8, offset: u32 },
@@ -102,14 +90,12 @@ pub enum Endpoint<'a> {
     SavedShowsIds { ids: &'a str },
     SavedShowsContains { ids: &'a str },
 
-    // Episode endpoints
     Episode { id: &'a str },
     Episodes { ids: &'a str },
     SavedEpisodes { limit: u8, offset: u32 },
     SavedEpisodesIds { ids: &'a str },
     SavedEpisodesContains { ids: &'a str },
 
-    // Audiobook endpoints
     Audiobook { id: &'a str },
     Audiobooks { ids: &'a str },
     AudiobookChapters { id: &'a str, limit: u8, offset: u32 },
@@ -117,7 +103,6 @@ pub enum Endpoint<'a> {
     SavedAudiobooksIds { ids: &'a str },
     SavedAudiobooksContains { ids: &'a str },
 
-    // Chapter endpoints
     Chapter { id: &'a str },
     Chapters { ids: &'a str },
 }
@@ -126,7 +111,6 @@ impl<'a> Endpoint<'a> {
     /// Get the path string for this endpoint
     pub fn path(&self) -> String {
         match self {
-            // Player
             Endpoint::PlayerState => "/me/player".to_string(),
             Endpoint::PlayerCurrentlyPlaying => "/me/player/currently-playing".to_string(),
             Endpoint::PlayerPlay => "/me/player/play".to_string(),
@@ -146,7 +130,6 @@ impl<'a> Endpoint<'a> {
             Endpoint::PlayerShuffle { state } => format!("/me/player/shuffle?state={}", state),
             Endpoint::PlayerRepeat { state } => format!("/me/player/repeat?state={}", state),
 
-            // Playlists
             Endpoint::Playlist { id } => format!("/playlists/{}", id),
             Endpoint::PlaylistTracks { id } => format!("/playlists/{}/tracks", id),
             Endpoint::PlaylistItems { id, limit, offset } => {
@@ -165,25 +148,21 @@ impl<'a> Endpoint<'a> {
                 format!("/browse/categories/{}/playlists?limit={}&offset={}", category_id, limit, offset)
             }
 
-            // Library (tracks)
             Endpoint::SavedTracks { limit, offset } => {
                 format!("/me/tracks?limit={}&offset={}", limit, offset)
             }
             Endpoint::SavedTracksIds { ids } => format!("/me/tracks?ids={}", ids),
             Endpoint::SavedTracksContains { ids } => format!("/me/tracks/contains?ids={}", ids),
 
-            // Library (albums)
             Endpoint::SavedAlbums { limit, offset } => {
                 format!("/me/albums?limit={}&offset={}", limit, offset)
             }
             Endpoint::SavedAlbumsIds { ids } => format!("/me/albums?ids={}", ids),
             Endpoint::SavedAlbumsContains { ids } => format!("/me/albums/contains?ids={}", ids),
 
-            // Tracks
             Endpoint::Track { id } => format!("/tracks/{}", id),
             Endpoint::Tracks { ids } => format!("/tracks?ids={}", ids),
 
-            // Albums
             Endpoint::Album { id } => format!("/albums/{}", id),
             Endpoint::Albums { ids } => format!("/albums?ids={}", ids),
             Endpoint::AlbumTracks { id, limit, offset } => {
@@ -193,7 +172,6 @@ impl<'a> Endpoint<'a> {
                 format!("/browse/new-releases?limit={}&offset={}", limit, offset)
             }
 
-            // Artists
             Endpoint::Artist { id } => format!("/artists/{}", id),
             Endpoint::Artists { ids } => format!("/artists?ids={}", ids),
             Endpoint::ArtistTopTracks { id, market } => {
@@ -204,7 +182,6 @@ impl<'a> Endpoint<'a> {
             }
             Endpoint::ArtistRelatedArtists { id } => format!("/artists/{}/related-artists", id),
 
-            // User
             Endpoint::CurrentUser => "/me".to_string(),
             Endpoint::UserProfile { user_id } => format!("/users/{}", user_id),
             Endpoint::UserTopItems {
@@ -234,23 +211,19 @@ impl<'a> Endpoint<'a> {
                 format!("/playlists/{}/followers/contains?ids={}", playlist_id, ids)
             }
 
-            // Categories
             Endpoint::Category { id } => format!("/browse/categories/{}", id),
             Endpoint::Categories { limit, offset } => {
                 format!("/browse/categories?limit={}&offset={}", limit, offset)
             }
 
-            // Markets
             Endpoint::Markets => "/markets".to_string(),
 
-            // Search
             Endpoint::Search {
                 query,
                 types,
                 limit,
             } => format!("/search?q={}&type={}&limit={}", encode(query), types, limit),
 
-            // Shows
             Endpoint::Show { id } => format!("/shows/{}", id),
             Endpoint::Shows { ids } => format!("/shows?ids={}", ids),
             Endpoint::ShowEpisodes { id, limit, offset } => {
@@ -262,7 +235,6 @@ impl<'a> Endpoint<'a> {
             Endpoint::SavedShowsIds { ids } => format!("/me/shows?ids={}", ids),
             Endpoint::SavedShowsContains { ids } => format!("/me/shows/contains?ids={}", ids),
 
-            // Episodes
             Endpoint::Episode { id } => format!("/episodes/{}", id),
             Endpoint::Episodes { ids } => format!("/episodes?ids={}", ids),
             Endpoint::SavedEpisodes { limit, offset } => {
@@ -271,7 +243,6 @@ impl<'a> Endpoint<'a> {
             Endpoint::SavedEpisodesIds { ids } => format!("/me/episodes?ids={}", ids),
             Endpoint::SavedEpisodesContains { ids } => format!("/me/episodes/contains?ids={}", ids),
 
-            // Audiobooks
             Endpoint::Audiobook { id } => format!("/audiobooks/{}", id),
             Endpoint::Audiobooks { ids } => format!("/audiobooks?ids={}", ids),
             Endpoint::AudiobookChapters { id, limit, offset } => {
@@ -285,7 +256,6 @@ impl<'a> Endpoint<'a> {
                 format!("/me/audiobooks/contains?ids={}", ids)
             }
 
-            // Chapters
             Endpoint::Chapter { id } => format!("/chapters/{}", id),
             Endpoint::Chapters { ids } => format!("/chapters?ids={}", ids),
         }

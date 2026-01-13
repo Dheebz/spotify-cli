@@ -7,7 +7,6 @@ use crate::io::common::{extract_artist_names, format_number, get_score, print_ta
 pub fn format_search_results(payload: &Value) {
     let mut has_results = false;
 
-    // Pins (from combined search)
     if let Some(pins) = payload.get("pins")
         && let Some(arr) = pins.as_array()
             && !arr.is_empty() {
@@ -20,7 +19,6 @@ pub fn format_search_results(payload: &Value) {
                 }
             }
 
-    // Spotify results
     if let Some(spotify) = payload.get("spotify") {
         format_spotify_search(spotify, &mut has_results);
     } else {
@@ -33,7 +31,6 @@ pub fn format_search_results(payload: &Value) {
 }
 
 pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
-    // Tracks
     if let Some(tracks) = payload.get("tracks").and_then(|t| t.get("items")).and_then(|i| i.as_array())
         && !tracks.is_empty() {
             *has_results = true;
@@ -49,7 +46,6 @@ pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
             print_table("Tracks", &["Title", "Artist", "Score"], &rows, &[30, 20, 5]);
         }
 
-    // Albums
     if let Some(albums) = payload.get("albums").and_then(|t| t.get("items")).and_then(|i| i.as_array())
         && !albums.is_empty() {
             *has_results = true;
@@ -65,7 +61,6 @@ pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
             print_table("Albums", &["Title", "Artist", "Score"], &rows, &[30, 20, 5]);
         }
 
-    // Artists
     if let Some(artists) = payload.get("artists").and_then(|t| t.get("items")).and_then(|i| i.as_array())
         && !artists.is_empty() {
             *has_results = true;
@@ -86,7 +81,6 @@ pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
             print_table("Artists", &["Name", "Followers", "Score"], &rows, &[30, 12, 5]);
         }
 
-    // Playlists
     if let Some(playlists) = payload.get("playlists").and_then(|t| t.get("items")).and_then(|i| i.as_array()) {
         let valid: Vec<_> = playlists
             .iter()

@@ -97,7 +97,6 @@ pub fn extract_artist_names(item: &Value) -> String {
 pub fn print_table(header: &str, cols: &[&str], rows: &[Vec<String>], col_widths: &[usize]) {
     println!("\n{}:", header);
 
-    // Header row
     print!("  ");
     for (i, col) in cols.iter().enumerate() {
         if i == cols.len() - 1 {
@@ -108,7 +107,6 @@ pub fn print_table(header: &str, cols: &[&str], rows: &[Vec<String>], col_widths
     }
     println!();
 
-    // Separator
     print!("  ");
     for (i, &w) in col_widths.iter().enumerate() {
         if i == col_widths.len() - 1 {
@@ -119,7 +117,6 @@ pub fn print_table(header: &str, cols: &[&str], rows: &[Vec<String>], col_widths
     }
     println!();
 
-    // Data rows
     for row in rows {
         print!("  ");
         for (i, cell) in row.iter().enumerate() {

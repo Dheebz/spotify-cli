@@ -1,9 +1,14 @@
+//! Spotify authentication endpoints.
+//!
+//! Handles token exchange and refresh via accounts.spotify.com.
+
 use thiserror::Error;
 
 use super::client::HttpClient;
 
 const BASE_URL: &str = "https://accounts.spotify.com";
 
+/// Errors from authentication requests.
 #[derive(Debug, Error)]
 pub enum AuthError {
     #[error("Request failed: {0}")]
@@ -13,18 +18,22 @@ pub enum AuthError {
     TokenExchange { status: u16, message: String },
 }
 
-/// Spotify Auth client - token operations via accounts.spotify.com
+/// Spotify authentication client.
+///
+/// Handles token operations via accounts.spotify.com/api/token.
 pub struct SpotifyAuth {
     http: HttpClient,
 }
 
 impl SpotifyAuth {
+    /// Create a new authentication client.
     pub fn new() -> Self {
         Self {
             http: HttpClient::new(),
         }
     }
 
+    /// Build a URL for the Spotify accounts endpoint.
     pub fn url(path: &str) -> String {
         format!("{}{}", BASE_URL, path)
     }

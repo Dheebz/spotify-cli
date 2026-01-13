@@ -31,26 +31,14 @@ impl FormatterRegistry {
             formatters: Vec::new(),
         };
 
-        // Register formatters in priority order (most specific first)
-        // The order matters: more specific matchers should come before generic ones
-
-        // Player and queue
         registry.register(Box::new(PlayerStatusFormatter));
         registry.register(Box::new(QueueFormatter));
         registry.register(Box::new(DevicesFormatter));
-
-        // Search results (before individual resource types)
         registry.register(Box::new(CombinedSearchFormatter));
         registry.register(Box::new(SpotifySearchFormatter));
-
-        // Pins
         registry.register(Box::new(PinsFormatter));
-
-        // Browse categories
         registry.register(Box::new(CategoryListFormatter));
         registry.register(Box::new(CategoryDetailFormatter));
-
-        // Single resource details (specific first)
         registry.register(Box::new(PlaylistDetailFormatter));
         registry.register(Box::new(TrackDetailFormatter));
         registry.register(Box::new(AlbumDetailFormatter));
@@ -60,8 +48,6 @@ impl FormatterRegistry {
         registry.register(Box::new(EpisodeDetailFormatter));
         registry.register(Box::new(AudiobookDetailFormatter));
         registry.register(Box::new(ChapterDetailFormatter));
-
-        // Lists with items arrays
         registry.register(Box::new(PlaylistsFormatter));
         registry.register(Box::new(SavedTracksFormatter));
         registry.register(Box::new(PlayHistoryFormatter));
@@ -72,11 +58,7 @@ impl FormatterRegistry {
         registry.register(Box::new(AudiobookChaptersFormatter));
         registry.register(Box::new(TopTracksFormatter));
         registry.register(Box::new(TopArtistsFormatter));
-
-        // Artist top tracks (different structure)
         registry.register(Box::new(ArtistTopTracksFormatter));
-
-        // Library check (array of booleans)
         registry.register(Box::new(LibraryCheckFormatter));
 
         registry
@@ -94,7 +76,6 @@ impl FormatterRegistry {
                 return;
             }
         }
-        // Fallback: just print the message
         println!("{}", message);
     }
 }
@@ -105,19 +86,12 @@ impl Default for FormatterRegistry {
     }
 }
 
-// Global registry instance
 pub static REGISTRY: LazyLock<FormatterRegistry> = LazyLock::new(FormatterRegistry::new);
 
 /// Format a payload using the global registry
 pub fn format_payload(payload: &Value, message: &str) {
     REGISTRY.format(payload, message);
 }
-
-// ============================================================================
-// Formatter Implementations
-// ============================================================================
-
-// --- Player ---
 
 struct PlayerStatusFormatter;
 impl PayloadFormatter for PlayerStatusFormatter {
@@ -162,15 +136,12 @@ impl PayloadFormatter for DevicesFormatter {
     }
 }
 
-// --- Search ---
-
 struct CombinedSearchFormatter;
 impl PayloadFormatter for CombinedSearchFormatter {
     fn name(&self) -> &'static str {
         "combined_search"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Search results from combined pins + spotify search
         payload.get("spotify").is_some()
     }
     fn format(&self, payload: &Value, _message: &str) {
@@ -184,8 +155,6 @@ impl PayloadFormatter for SpotifySearchFormatter {
         "spotify_search"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Pure Spotify search results have nested structure
-        // Exclude single resource responses (playlist has "owner", album has "album_type")
         let is_playlist = payload.get("owner").is_some();
         let is_album = payload.get("album_type").is_some();
         !is_playlist
@@ -204,15 +173,12 @@ impl PayloadFormatter for SpotifySearchFormatter {
     }
 }
 
-// --- Pins ---
-
 struct PinsFormatter;
 impl PayloadFormatter for PinsFormatter {
     fn name(&self) -> &'static str {
         "pins"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Only "pins" key, no "spotify"
         payload.get("pins").is_some() && payload.get("spotify").is_none()
     }
     fn format(&self, payload: &Value, _message: &str) {
@@ -221,8 +187,6 @@ impl PayloadFormatter for PinsFormatter {
         }
     }
 }
-
-// --- Categories ---
 
 struct CategoryListFormatter;
 impl PayloadFormatter for CategoryListFormatter {
@@ -252,7 +216,6 @@ impl PayloadFormatter for CategoryDetailFormatter {
         "category_detail"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Single category: has icons and id, but not common keys like followers, owner
         payload.get("icons").is_some()
             && payload.get("id").is_some()
             && payload.get("followers").is_none()
@@ -262,8 +225,6 @@ impl PayloadFormatter for CategoryDetailFormatter {
         formatters::format_category_detail(payload);
     }
 }
-
-// --- Single Resource Details ---
 
 struct PlaylistDetailFormatter;
 impl PayloadFormatter for PlaylistDetailFormatter {
@@ -284,7 +245,6 @@ impl PayloadFormatter for TrackDetailFormatter {
         "track_detail"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Has album and artists, but no "item" wrapper
         payload.get("album").is_some()
             && payload.get("artists").is_some()
             && payload.get("duration_ms").is_some()
@@ -313,7 +273,6 @@ impl PayloadFormatter for ArtistDetailFormatter {
         "artist_detail"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Has followers and genres, no album
         payload.get("followers").is_some()
             && payload.get("genres").is_some()
             && payload.get("album").is_none()
@@ -329,7 +288,6 @@ impl PayloadFormatter for UserProfileFormatter {
         "user_profile"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Has display_name and product, but not genres
         payload.get("display_name").is_some()
             && payload.get("product").is_some()
             && payload.get("genres").is_none()
@@ -392,8 +350,6 @@ impl PayloadFormatter for ChapterDetailFormatter {
         formatters::format_chapter_detail(payload);
     }
 }
-
-// --- List Formatters ---
 
 struct PlaylistsFormatter;
 impl PayloadFormatter for PlaylistsFormatter {
@@ -603,15 +559,12 @@ impl PayloadFormatter for TopArtistsFormatter {
     }
 }
 
-// --- Special Formats ---
-
 struct ArtistTopTracksFormatter;
 impl PayloadFormatter for ArtistTopTracksFormatter {
     fn name(&self) -> &'static str {
         "artist_top_tracks"
     }
     fn matches(&self, payload: &Value) -> bool {
-        // Has tracks array at root (not nested)
         payload.get("tracks").map(|t| t.is_array()).unwrap_or(false)
             && payload.get("items").is_none()
     }

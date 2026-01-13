@@ -1,9 +1,16 @@
+//! Local HTTP server for OAuth callback.
+//!
+//! Starts a temporary HTTP server on localhost to receive the OAuth callback
+//! containing the authorization code after user approval.
+
 use std::time::Duration;
 use thiserror::Error;
 use tiny_http::{Response, Server};
 use url::Url;
 
+/// Default port for the callback server.
 pub const DEFAULT_PORT: u16 = 8888;
+/// Path where Spotify redirects after authorization.
 pub const CALLBACK_PATH: &str = "/callback";
 
 #[derive(Debug, Error)]
@@ -24,17 +31,24 @@ pub enum CallbackError {
     InvalidRequest,
 }
 
+/// HTTP server that listens for the OAuth callback.
 pub struct CallbackServer {
     port: u16,
     timeout: Duration,
 }
 
+/// Result from a successful OAuth callback.
 pub struct CallbackResult {
+    /// The authorization code to exchange for tokens.
     pub code: String,
+    /// Optional state parameter for CSRF protection.
     pub state: Option<String>,
 }
 
 impl CallbackServer {
+    /// Create a new callback server on the given port.
+    ///
+    /// Default timeout is 5 minutes.
     pub fn new(port: u16) -> Self {
         Self {
             port,
@@ -42,15 +56,20 @@ impl CallbackServer {
         }
     }
 
+    /// Set a custom timeout for waiting for the callback.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
+    /// Get the redirect URI for this server.
     pub fn redirect_uri(&self) -> String {
         format!("http://127.0.0.1:{}{}", self.port, CALLBACK_PATH)
     }
 
+    /// Start the server and wait for the OAuth callback.
+    ///
+    /// Blocks until callback is received or timeout expires.
     pub fn wait_for_callback(self) -> Result<CallbackResult, CallbackError> {
         let addr = format!("127.0.0.1:{}", self.port);
         let server =

@@ -1,3 +1,8 @@
+//! OAuth 2.0 Authorization Code flow with PKCE.
+//!
+//! Orchestrates the full authentication flow: browser authorization, callback handling,
+//! and token exchange.
+
 use thiserror::Error;
 use url::Url;
 
@@ -23,6 +28,9 @@ pub enum OAuthError {
     TokenParse,
 }
 
+/// OAuth flow configuration and execution.
+///
+/// Handles the complete OAuth 2.0 Authorization Code flow with PKCE.
 pub struct OAuthFlow {
     client_id: String,
     redirect_uri: String,
@@ -31,6 +39,9 @@ pub struct OAuthFlow {
 }
 
 impl OAuthFlow {
+    /// Create a new OAuth flow with the given Spotify client ID.
+    ///
+    /// Uses default scopes and port 8888 for the callback server.
     pub fn new(client_id: String) -> Self {
         let port = DEFAULT_PORT;
         let redirect_uri = format!("http://127.0.0.1:{}/callback", port);
@@ -43,17 +54,25 @@ impl OAuthFlow {
         }
     }
 
+    /// Override the default scopes.
     pub fn with_scopes(mut self, scopes: Vec<String>) -> Self {
         self.scopes = scopes;
         self
     }
 
+    /// Override the default callback port.
     pub fn with_port(mut self, port: u16) -> Self {
         self.port = port;
         self.redirect_uri = format!("http://127.0.0.1:{}/callback", port);
         self
     }
 
+    /// Execute the full OAuth flow.
+    ///
+    /// 1. Generates PKCE challenge
+    /// 2. Opens browser to Spotify authorization page
+    /// 3. Waits for callback with authorization code
+    /// 4. Exchanges code for tokens
     pub async fn authenticate(&self) -> Result<Token, OAuthError> {
         let pkce = PkceChallenge::generate();
 
@@ -70,6 +89,7 @@ impl OAuthFlow {
         Ok(token)
     }
 
+    /// Refresh an expired access token using a refresh token.
     pub async fn refresh(&self, refresh_token: &str) -> Result<Token, OAuthError> {
         let auth = SpotifyAuth::new();
 
@@ -117,24 +137,19 @@ impl OAuthFlow {
 
 fn default_scopes() -> Vec<String> {
     vec![
-        // Playback
         "user-read-playback-state".to_string(),
         "user-modify-playback-state".to_string(),
         "user-read-currently-playing".to_string(),
-        // Library
         "user-library-read".to_string(),
         "user-library-modify".to_string(),
-        // Playlists
         "playlist-read-private".to_string(),
         "playlist-read-collaborative".to_string(),
         "playlist-modify-private".to_string(),
         "playlist-modify-public".to_string(),
-        // User
         "user-read-private".to_string(),
         "user-read-email".to_string(),
         "user-top-read".to_string(),
         "user-read-recently-played".to_string(),
-        // Follow
         "user-follow-read".to_string(),
         "user-follow-modify".to_string(),
     ]

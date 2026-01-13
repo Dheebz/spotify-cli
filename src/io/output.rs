@@ -81,6 +81,7 @@ pub struct ErrorDetail {
 }
 
 impl Response {
+    #[must_use]
     pub fn success(code: u16, message: impl Into<String>) -> Self {
         Self {
             status: Status::Success,
@@ -91,6 +92,7 @@ impl Response {
         }
     }
 
+    #[must_use]
     pub fn success_with_payload(code: u16, message: impl Into<String>, payload: Value) -> Self {
         Self {
             status: Status::Success,
@@ -102,6 +104,7 @@ impl Response {
     }
 
     /// Create an error response with ErrorKind
+    #[must_use]
     pub fn err(code: u16, message: impl Into<String>, kind: ErrorKind) -> Self {
         Self {
             status: Status::Error,
@@ -116,6 +119,7 @@ impl Response {
     }
 
     /// Create an error response with ErrorKind and details
+    #[must_use]
     pub fn err_with_details(
         code: u16,
         message: impl Into<String>,
@@ -135,56 +139,43 @@ impl Response {
     }
 
     /// Create a Response from an HttpError, preserving the original status code
+    #[must_use]
     pub fn from_http_error(err: &HttpError, context: &str) -> Self {
         let kind = match err {
             HttpError::Network(_) => ErrorKind::Network,
             HttpError::Unauthorized => ErrorKind::Auth,
             HttpError::Forbidden => ErrorKind::Forbidden,
             HttpError::NotFound => ErrorKind::NotFound,
-            HttpError::RateLimited => ErrorKind::RateLimited,
+            HttpError::RateLimited { .. } => ErrorKind::RateLimited,
             HttpError::Api { .. } => ErrorKind::Api,
+        };
+
+        let status_text = match err.status_code() {
+            400 => "Bad Request",
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            429 => "Rate Limited",
+            500 => "Internal Server Error",
+            502 => "Bad Gateway",
+            503 => "Service Unavailable",
+            _ => "",
+        };
+
+        let message = if status_text.is_empty() {
+            format!("{} ({})", context, err.status_code())
+        } else {
+            format!("{}: {} {}", context, err.status_code(), status_text)
         };
 
         Self {
             status: Status::Error,
             code: err.status_code(),
-            message: context.to_string(),
+            message,
             payload: None,
             error: Some(ErrorDetail {
                 kind: kind.to_string(),
                 details: Some(err.user_message().to_string()),
-            }),
-        }
-    }
-
-    // Legacy methods for backward compatibility
-    pub fn error(code: u16, message: impl Into<String>, kind: impl Into<String>) -> Self {
-        Self {
-            status: Status::Error,
-            code,
-            message: message.into(),
-            payload: None,
-            error: Some(ErrorDetail {
-                kind: kind.into(),
-                details: None,
-            }),
-        }
-    }
-
-    pub fn error_with_details(
-        code: u16,
-        message: impl Into<String>,
-        kind: impl Into<String>,
-        details: impl Into<String>,
-    ) -> Self {
-        Self {
-            status: Status::Error,
-            code,
-            message: message.into(),
-            payload: None,
-            error: Some(ErrorDetail {
-                kind: kind.into(),
-                details: Some(details.into()),
             }),
         }
     }
@@ -195,10 +186,6 @@ impl Response {
         })
     }
 }
-
-// ============================================================================
-// Error Response Macros (updated to use ErrorKind)
-// ============================================================================
 
 /// Create an API error response from HttpError (preserves status code)
 #[macro_export]

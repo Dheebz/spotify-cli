@@ -1,9 +1,14 @@
+//! Configuration file handling.
+//!
+//! Loads and parses the TOML configuration file from the user's config directory.
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use thiserror::Error;
 
 use super::paths;
 
+/// Errors that can occur when loading configuration.
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("Config file not found at {0}")]
@@ -25,11 +30,14 @@ pub enum ConfigError {
     MissingField(String),
 }
 
+/// Spotify API credentials.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpotifyConfig {
+    /// Spotify Developer App client ID.
     pub client_id: String,
 }
 
+/// Fuzzy search scoring configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FuzzyConfig {
     /// Score for exact name match
@@ -72,6 +80,7 @@ impl Default for FuzzyConfig {
     }
 }
 
+/// Search behavior configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchConfig {
     /// Include fuzzy scores in results
@@ -98,6 +107,9 @@ impl Default for SearchConfig {
     }
 }
 
+/// Root configuration structure.
+///
+/// Loaded from `~/.config/spotify-cli/config.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(rename = "spotify-cli")]
@@ -107,6 +119,9 @@ pub struct Config {
 }
 
 impl Config {
+    /// Load configuration from the default config file.
+    ///
+    /// Returns error if file doesn't exist or client_id is missing.
     pub fn load() -> Result<Self, ConfigError> {
         let path = paths::config_file()?;
 

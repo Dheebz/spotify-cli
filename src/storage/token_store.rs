@@ -1,3 +1,9 @@
+//! OAuth token persistence.
+//!
+//! Stores tokens in JSON format in the user's config directory.
+//! Tokens are automatically saved after successful authentication
+//! and loaded on subsequent CLI invocations.
+
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -5,6 +11,7 @@ use thiserror::Error;
 use super::paths;
 use crate::oauth::token::Token;
 
+/// Errors that can occur when storing/loading tokens.
 #[derive(Debug, Error)]
 pub enum TokenStoreError {
     #[error("Could not determine config directory: {0}")]
@@ -20,16 +27,23 @@ pub enum TokenStoreError {
     NotFound,
 }
 
+/// Token storage manager.
+///
+/// Handles reading and writing OAuth tokens to disk.
 pub struct TokenStore {
     path: PathBuf,
 }
 
 impl TokenStore {
+    /// Create a new token store using the default path.
     pub fn new() -> Result<Self, TokenStoreError> {
         let path = paths::token_file()?;
         Ok(Self { path })
     }
 
+    /// Save a token to disk.
+    ///
+    /// Creates the parent directory if it doesn't exist.
     pub fn save(&self, token: &Token) -> Result<(), TokenStoreError> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -41,6 +55,9 @@ impl TokenStore {
         Ok(())
     }
 
+    /// Load a token from disk.
+    ///
+    /// Returns `NotFound` error if no token file exists.
     pub fn load(&self) -> Result<Token, TokenStoreError> {
         if !self.path.exists() {
             return Err(TokenStoreError::NotFound);
@@ -52,6 +69,7 @@ impl TokenStore {
         Ok(token)
     }
 
+    /// Delete the stored token.
     pub fn delete(&self) -> Result<(), TokenStoreError> {
         if self.path.exists() {
             fs::remove_file(&self.path)?;
@@ -60,18 +78,14 @@ impl TokenStore {
         Ok(())
     }
 
+    /// Check if a token file exists.
     pub fn exists(&self) -> bool {
         self.path.exists()
     }
 
+    /// Get the path to the token file.
     pub fn path(&self) -> &PathBuf {
         &self.path
-    }
-}
-
-impl Default for TokenStore {
-    fn default() -> Self {
-        Self::new().expect("Failed to initialize token store")
     }
 }
 

@@ -1,14 +1,13 @@
-use crate::endpoints::player::get_playback_state;
 use crate::endpoints::playlists::{
     add_items_to_playlist, change_playlist_details, create_playlist, follow_playlist,
-    get_current_user_playlists, get_playlist, remove_items_from_playlist, unfollow_playlist,
-    update_playlist_items,
+    get_current_user_playlists, get_featured_playlists, get_playlist, get_playlist_cover_image,
+    get_users_playlists, remove_items_from_playlist, unfollow_playlist, update_playlist_items,
 };
 use crate::endpoints::user::get_current_user;
 use crate::io::output::{ErrorKind, Response};
-use crate::storage::pins::{Pin, PinStore, ResourceType};
+use crate::storage::pins::{PinStore, ResourceType};
 
-use super::{extract_id, with_client};
+use super::{extract_id, now_playing, with_client};
 
 /// Resolve a playlist identifier to a Spotify ID
 /// Accepts: ID, URL, or pin alias
@@ -18,7 +17,7 @@ fn resolve_playlist_id(input: &str) -> Result<String, Response> {
             && pin.resource_type == ResourceType::Playlist {
                 return Ok(pin.id.clone());
             }
-    Ok(Pin::extract_id(input))
+    Ok(extract_id(input))
 }
 
 pub async fn playlist_list(limit: u8, offset: u32) -> Response {
@@ -72,9 +71,8 @@ pub async fn playlist_create(name: &str, description: Option<&str>, public: bool
     }).await
 }
 
-pub async fn playlist_add(playlist: &str, uris: &[String], now_playing: bool, position: Option<u32>) -> Response {
-    // Validate input
-    if uris.is_empty() && !now_playing {
+pub async fn playlist_add(playlist: &str, uris: &[String], now_playing_flag: bool, position: Option<u32>, dry_run: bool) -> Response {
+    if uris.is_empty() && !now_playing_flag {
         return Response::err(400, "Provide track URIs or use --now-playing", ErrorKind::Validation);
     }
 
@@ -87,26 +85,29 @@ pub async fn playlist_add(playlist: &str, uris: &[String], now_playing: bool, po
     with_client(|client| async move {
         let mut all_uris = explicit_uris;
 
-        // Add now playing track if requested
-        if now_playing {
-            match get_playback_state::get_playback_state(&client).await {
-                Ok(Some(state)) => {
-                    if let Some(uri) = state
-                        .get("item")
-                        .and_then(|i| i.get("uri"))
-                        .and_then(|v| v.as_str())
-                    {
-                        all_uris.push(uri.to_string());
-                    } else {
-                        return Response::err(404, "Nothing currently playing", ErrorKind::Player);
-                    }
-                }
-                Ok(None) => return Response::err(404, "Nothing currently playing", ErrorKind::Player),
-                Err(e) => return Response::from_http_error(&e, "Failed to get playback state"),
+        if now_playing_flag {
+            match now_playing::get_track_uri(&client).await {
+                Ok(uri) => all_uris.push(uri),
+                Err(e) => return e,
             }
         }
 
         let uri_count = all_uris.len();
+
+        if dry_run {
+            return Response::success_with_payload(
+                200,
+                format!("[DRY RUN] Would add {} track(s) to playlist {}", uri_count, playlist_id),
+                serde_json::json!({
+                    "dry_run": true,
+                    "action": "add",
+                    "playlist_id": playlist_id,
+                    "uris": all_uris,
+                    "position": position
+                }),
+            );
+        }
+
         match add_items_to_playlist::add_items_to_playlist(&client, &playlist_id, &all_uris, position).await {
             Ok(Some(payload)) => Response::success_with_payload(201, format!("Added {} track(s)", uri_count), payload),
             Ok(None) => Response::success(201, format!("Added {} track(s)", uri_count)),
@@ -115,13 +116,26 @@ pub async fn playlist_add(playlist: &str, uris: &[String], now_playing: bool, po
     }).await
 }
 
-pub async fn playlist_remove(playlist: &str, uris: &[String]) -> Response {
+pub async fn playlist_remove(playlist: &str, uris: &[String], dry_run: bool) -> Response {
     let playlist_id = match resolve_playlist_id(playlist) {
         Ok(id) => id,
         Err(e) => return e,
     };
     let uris = uris.to_vec();
     let uri_count = uris.len();
+
+    if dry_run {
+        return Response::success_with_payload(
+            200,
+            format!("[DRY RUN] Would remove {} track(s) from playlist {}", uri_count, playlist_id),
+            serde_json::json!({
+                "dry_run": true,
+                "action": "remove",
+                "playlist_id": playlist_id,
+                "uris": uris
+            }),
+        );
+    }
 
     with_client(|client| async move {
         match remove_items_from_playlist::remove_items_from_playlist(&client, &playlist_id, &uris).await {
@@ -266,5 +280,53 @@ pub async fn playlist_duplicate(playlist: &str, new_name: Option<&str>) -> Respo
         }
 
         Response::success_with_payload(200, format!("Duplicated playlist as '{}'", name), new_playlist)
+    }).await
+}
+
+/// Get featured playlists
+pub async fn playlist_featured(limit: u8, offset: u32) -> Response {
+    with_client(|client| async move {
+        match get_featured_playlists::get_featured_playlists(&client, Some(limit), Some(offset)).await {
+            Ok(Some(payload)) => Response::success_with_payload(200, "Featured playlists", payload),
+            Ok(None) => Response::success_with_payload(
+                200,
+                "No featured playlists",
+                serde_json::json!({ "playlists": { "items": [] } }),
+            ),
+            Err(e) => Response::from_http_error(&e, "Failed to get featured playlists"),
+        }
+    }).await
+}
+
+/// Get playlist cover image URL
+pub async fn playlist_cover(playlist: &str) -> Response {
+    let playlist_id = match resolve_playlist_id(playlist) {
+        Ok(id) => id,
+        Err(e) => return e,
+    };
+
+    with_client(|client| async move {
+        match get_playlist_cover_image::get_playlist_cover_image(&client, &playlist_id).await {
+            Ok(Some(payload)) => Response::success_with_payload(200, "Playlist cover image", payload),
+            Ok(None) => Response::err(404, "No cover image found", ErrorKind::NotFound),
+            Err(e) => Response::from_http_error(&e, "Failed to get playlist cover"),
+        }
+    }).await
+}
+
+/// Get another user's playlists
+pub async fn playlist_user(user_id: &str) -> Response {
+    let user_id = user_id.to_string();
+
+    with_client(|client| async move {
+        match get_users_playlists::get_users_playlists(&client, &user_id).await {
+            Ok(Some(payload)) => Response::success_with_payload(200, format!("Playlists for user {}", user_id), payload),
+            Ok(None) => Response::success_with_payload(
+                200,
+                "No playlists found",
+                serde_json::json!({ "items": [] }),
+            ),
+            Err(e) => Response::from_http_error(&e, "Failed to get user's playlists"),
+        }
     }).await
 }

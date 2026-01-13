@@ -15,7 +15,6 @@ pub mod show;
 pub mod track;
 pub mod user;
 
-// Re-export all formatters for easy access
 pub use album::format_album_detail;
 pub use artist::{format_artist_detail, format_top_artists};
 pub use audiobook::{format_audiobook_chapters, format_audiobook_detail, format_audiobooks};

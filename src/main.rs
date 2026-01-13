@@ -1,59 +1,71 @@
-pub mod cli;
-pub mod endpoints;
-pub mod http;
-pub mod io;
-pub mod oauth;
-pub mod storage;
-
 use clap::Parser;
-use cli::{
-    AudiobookCommand, AuthCommand, CategoryCommand, ChapterCommand, Cli, Command, DevicesCommand,
-    EpisodeCommand, InfoCommand, LibraryCommand, PinCommand, PlaylistCommand, PlayerCommand,
-    QueueCommand, ShowCommand, UserCommand,
+use spotify_cli::cli::{
+    print_completions, AlbumCommand, AudiobookCommand, AuthCommand, CategoryCommand,
+    ChapterCommand, Cli, Command, DevicesCommand, EpisodeCommand, FollowCommand, InfoCommand,
+    LibraryCommand, PinCommand, PlaylistCommand, PlayerCommand, QueueCommand, ShowCommand,
+    UserCommand,
 };
-use io::output::{print_human, print_json};
+use spotify_cli::io::output::{print_human, print_json};
+use spotify_cli::cli::commands;
+use tracing_subscriber::EnvFilter;
+
+fn init_logging(verbose: u8) {
+    let filter = match verbose {
+        0 => EnvFilter::new("warn"),
+        1 => EnvFilter::new("info"),
+        2 => EnvFilter::new("debug"),
+        _ => EnvFilter::new("trace"),
+    };
+
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .without_time()
+        .init();
+}
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+    init_logging(cli.verbose);
 
     let response = match cli.command {
         Command::Auth { command } => match command {
-            AuthCommand::Login { force } => cli::commands::auth_login(force).await,
-            AuthCommand::Logout => cli::commands::auth_logout().await,
-            AuthCommand::Refresh => cli::commands::auth_refresh().await,
-            AuthCommand::Status => cli::commands::auth_status().await,
+            AuthCommand::Login { force } => commands::auth_login(force).await,
+            AuthCommand::Logout => commands::auth_logout().await,
+            AuthCommand::Refresh => commands::auth_refresh().await,
+            AuthCommand::Status => commands::auth_status().await,
         },
         Command::Player { command } => match command {
-            PlayerCommand::Next => cli::commands::player_next().await,
-            PlayerCommand::Previous => cli::commands::player_previous().await,
-            PlayerCommand::Toggle => cli::commands::player_toggle().await,
+            PlayerCommand::Next => commands::player_next().await,
+            PlayerCommand::Previous => commands::player_previous().await,
+            PlayerCommand::Toggle => commands::player_toggle().await,
             PlayerCommand::Play { uri, pin } => {
-                cli::commands::player_play(uri.as_deref(), pin.as_deref()).await
+                commands::player_play(uri.as_deref(), pin.as_deref()).await
             }
-            PlayerCommand::Pause => cli::commands::player_pause().await,
+            PlayerCommand::Pause => commands::player_pause().await,
             PlayerCommand::Status { id_only } => {
-                cli::commands::player_status(id_only.as_deref()).await
+                commands::player_status(id_only.as_deref()).await
             }
             PlayerCommand::Devices { command } => match command {
-                DevicesCommand::List => cli::commands::player_devices_list().await,
+                DevicesCommand::List => commands::player_devices_list().await,
                 DevicesCommand::Transfer { device } => {
-                    cli::commands::player_devices_transfer(&device).await
+                    commands::player_devices_transfer(&device).await
                 }
             },
             PlayerCommand::Queue { command } => match command {
-                QueueCommand::List => cli::commands::player_queue_list().await,
+                QueueCommand::List => commands::player_queue_list().await,
                 QueueCommand::Add { uri, now_playing } => {
-                    cli::commands::player_queue_add(uri.as_deref(), now_playing).await
+                    commands::player_queue_add(uri.as_deref(), now_playing).await
                 }
             },
             PlayerCommand::Seek { position } => {
-                cli::commands::player_seek(&position).await
+                commands::player_seek(&position).await
             }
-            PlayerCommand::Repeat { mode } => cli::commands::player_repeat(&mode).await,
-            PlayerCommand::Volume { percent } => cli::commands::player_volume(percent).await,
-            PlayerCommand::Shuffle { state } => cli::commands::player_shuffle(&state).await,
-            PlayerCommand::Recent => cli::commands::player_recent().await,
+            PlayerCommand::Repeat { mode } => commands::player_repeat(&mode).await,
+            PlayerCommand::Volume { percent } => commands::player_volume(percent).await,
+            PlayerCommand::Shuffle { state } => commands::player_shuffle(&state).await,
+            PlayerCommand::Recent => commands::player_recent().await,
         },
         Command::Pin { command } => match command {
             PinCommand::Add {
@@ -61,12 +73,12 @@ async fn main() {
                 url_or_id,
                 alias,
                 tags,
-            } => cli::commands::pin_add(&resource_type, &url_or_id, &alias, tags.as_deref()).await,
+            } => commands::pin_add(&resource_type, &url_or_id, &alias, tags.as_deref()).await,
             PinCommand::Remove { alias_or_id } => {
-                cli::commands::pin_remove(&alias_or_id).await
+                commands::pin_remove(&alias_or_id).await
             }
             PinCommand::List { resource_type } => {
-                cli::commands::pin_list(resource_type.as_deref()).await
+                commands::pin_list(resource_type.as_deref()).await
             }
         },
         Command::Search {
@@ -86,7 +98,7 @@ async fn main() {
             hipster,
             play,
         } => {
-            let filters = cli::commands::SearchFilters {
+            let filters = commands::SearchFilters {
                 artist,
                 album,
                 track,
@@ -97,26 +109,27 @@ async fn main() {
                 new,
                 hipster,
             };
-            cli::commands::search_command(&query, &types, limit, pins_only, exact, filters, play).await
+            commands::search_command(&query, &types, limit, pins_only, exact, filters, play).await
         }
         Command::Playlist { command } => match command {
             PlaylistCommand::List { limit, offset } => {
-                cli::commands::playlist_list(limit, offset).await
+                commands::playlist_list(limit, offset).await
             }
-            PlaylistCommand::Get { playlist } => cli::commands::playlist_get(&playlist).await,
+            PlaylistCommand::Get { playlist } => commands::playlist_get(&playlist).await,
             PlaylistCommand::Create {
                 name,
                 description,
                 public,
-            } => cli::commands::playlist_create(&name, description.as_deref(), public).await,
+            } => commands::playlist_create(&name, description.as_deref(), public).await,
             PlaylistCommand::Add {
                 playlist,
                 uris,
                 now_playing,
                 position,
-            } => cli::commands::playlist_add(&playlist, &uris, now_playing, position).await,
-            PlaylistCommand::Remove { playlist, uris } => {
-                cli::commands::playlist_remove(&playlist, &uris).await
+                dry_run,
+            } => commands::playlist_add(&playlist, &uris, now_playing, position, dry_run).await,
+            PlaylistCommand::Remove { playlist, uris, dry_run } => {
+                commands::playlist_remove(&playlist, &uris, dry_run).await
             }
             PlaylistCommand::Edit {
                 playlist,
@@ -132,7 +145,7 @@ async fn main() {
                 } else {
                     None
                 };
-                cli::commands::playlist_edit(
+                commands::playlist_edit(
                     &playlist,
                     name.as_deref(),
                     description.as_deref(),
@@ -145,89 +158,134 @@ async fn main() {
                 from,
                 to,
                 count,
-            } => cli::commands::playlist_reorder(&playlist, from, to, count).await,
+            } => commands::playlist_reorder(&playlist, from, to, count).await,
             PlaylistCommand::Follow { playlist, public } => {
-                cli::commands::playlist_follow(&playlist, public).await
+                commands::playlist_follow(&playlist, public).await
             }
             PlaylistCommand::Unfollow { playlist } => {
-                cli::commands::playlist_unfollow(&playlist).await
+                commands::playlist_unfollow(&playlist).await
             }
             PlaylistCommand::Duplicate { playlist, name } => {
-                cli::commands::playlist_duplicate(&playlist, name.as_deref()).await
+                commands::playlist_duplicate(&playlist, name.as_deref()).await
+            }
+            PlaylistCommand::Featured { limit, offset } => {
+                commands::playlist_featured(limit, offset).await
+            }
+            PlaylistCommand::Cover { playlist } => {
+                commands::playlist_cover(&playlist).await
+            }
+            PlaylistCommand::User { user_id } => {
+                commands::playlist_user(&user_id).await
             }
         },
         Command::Library { command } => match command {
             LibraryCommand::List { limit, offset } => {
-                cli::commands::library_list(limit, offset).await
+                commands::library_list(limit, offset).await
             }
-            LibraryCommand::Save { ids, now_playing } => {
-                cli::commands::library_save(&ids, now_playing).await
+            LibraryCommand::Save { ids, now_playing, dry_run } => {
+                commands::library_save(&ids, now_playing, dry_run).await
             }
-            LibraryCommand::Remove { ids } => cli::commands::library_remove(&ids).await,
-            LibraryCommand::Check { ids } => cli::commands::library_check(&ids).await,
+            LibraryCommand::Remove { ids, dry_run } => commands::library_remove(&ids, dry_run).await,
+            LibraryCommand::Check { ids } => commands::library_check(&ids).await,
         },
         Command::Info { command } => match command {
             InfoCommand::Track { id, id_only } => {
-                cli::commands::info_track(id.as_deref(), id_only).await
+                commands::info_track(id.as_deref(), id_only).await
             }
             InfoCommand::Album { id, id_only } => {
-                cli::commands::info_album(id.as_deref(), id_only).await
+                commands::info_album(id.as_deref(), id_only).await
             }
             InfoCommand::Artist {
                 id,
                 id_only,
                 top_tracks,
+                albums,
+                related,
                 market,
-            } => cli::commands::info_artist(id.as_deref(), id_only, top_tracks, &market).await,
+                limit,
+                offset,
+            } => commands::info_artist(id.as_deref(), id_only, top_tracks, albums, related, &market, limit, offset).await,
         },
         Command::User { command } => match command {
-            UserCommand::Profile => cli::commands::user_profile().await,
+            UserCommand::Profile => commands::user_profile().await,
             UserCommand::Top {
                 item_type,
                 range,
                 limit,
-            } => cli::commands::user_top(&item_type, &range, limit).await,
+            } => commands::user_top(&item_type, &range, limit).await,
+            UserCommand::Get { user_id } => commands::user_get(&user_id).await,
         },
         Command::Show { command } => match command {
-            ShowCommand::Get { id } => cli::commands::show_get(&id).await,
+            ShowCommand::Get { id } => commands::show_get(&id).await,
             ShowCommand::Episodes { id, limit, offset } => {
-                cli::commands::show_episodes(&id, limit, offset).await
+                commands::show_episodes(&id, limit, offset).await
             }
-            ShowCommand::List { limit, offset } => cli::commands::show_list(limit, offset).await,
-            ShowCommand::Save { ids } => cli::commands::show_save(&ids).await,
-            ShowCommand::Remove { ids } => cli::commands::show_remove(&ids).await,
-            ShowCommand::Check { ids } => cli::commands::show_check(&ids).await,
+            ShowCommand::List { limit, offset } => commands::show_list(limit, offset).await,
+            ShowCommand::Save { ids } => commands::show_save(&ids).await,
+            ShowCommand::Remove { ids } => commands::show_remove(&ids).await,
+            ShowCommand::Check { ids } => commands::show_check(&ids).await,
         },
         Command::Episode { command } => match command {
-            EpisodeCommand::Get { id } => cli::commands::episode_get(&id).await,
+            EpisodeCommand::Get { id } => commands::episode_get(&id).await,
             EpisodeCommand::List { limit, offset } => {
-                cli::commands::episode_list(limit, offset).await
+                commands::episode_list(limit, offset).await
             }
-            EpisodeCommand::Save { ids } => cli::commands::episode_save(&ids).await,
-            EpisodeCommand::Remove { ids } => cli::commands::episode_remove(&ids).await,
-            EpisodeCommand::Check { ids } => cli::commands::episode_check(&ids).await,
+            EpisodeCommand::Save { ids } => commands::episode_save(&ids).await,
+            EpisodeCommand::Remove { ids } => commands::episode_remove(&ids).await,
+            EpisodeCommand::Check { ids } => commands::episode_check(&ids).await,
         },
         Command::Audiobook { command } => match command {
-            AudiobookCommand::Get { id } => cli::commands::audiobook_get(&id).await,
+            AudiobookCommand::Get { id } => commands::audiobook_get(&id).await,
             AudiobookCommand::Chapters { id, limit, offset } => {
-                cli::commands::audiobook_chapters(&id, limit, offset).await
+                commands::audiobook_chapters(&id, limit, offset).await
             }
             AudiobookCommand::List { limit, offset } => {
-                cli::commands::audiobook_list(limit, offset).await
+                commands::audiobook_list(limit, offset).await
             }
-            AudiobookCommand::Save { ids } => cli::commands::audiobook_save(&ids).await,
-            AudiobookCommand::Remove { ids } => cli::commands::audiobook_remove(&ids).await,
-            AudiobookCommand::Check { ids } => cli::commands::audiobook_check(&ids).await,
+            AudiobookCommand::Save { ids } => commands::audiobook_save(&ids).await,
+            AudiobookCommand::Remove { ids } => commands::audiobook_remove(&ids).await,
+            AudiobookCommand::Check { ids } => commands::audiobook_check(&ids).await,
+        },
+        Command::Album { command } => match command {
+            AlbumCommand::List { limit, offset } => {
+                commands::album_list(limit, offset).await
+            }
+            AlbumCommand::Tracks { id, limit, offset } => {
+                commands::album_tracks(&id, limit, offset).await
+            }
+            AlbumCommand::Save { ids } => commands::album_save(&ids).await,
+            AlbumCommand::Remove { ids } => commands::album_remove(&ids).await,
+            AlbumCommand::Check { ids } => commands::album_check(&ids).await,
+            AlbumCommand::NewReleases { limit, offset } => {
+                commands::album_new_releases(limit, offset).await
+            }
         },
         Command::Chapter { command } => match command {
-            ChapterCommand::Get { id } => cli::commands::chapter_get(&id).await,
+            ChapterCommand::Get { id } => commands::chapter_get(&id).await,
         },
         Command::Category { command } => match command {
             CategoryCommand::List { limit, offset } => {
-                cli::commands::category_list(limit, offset).await
+                commands::category_list(limit, offset).await
             }
-            CategoryCommand::Get { id } => cli::commands::category_get(&id).await,
+            CategoryCommand::Get { id } => commands::category_get(&id).await,
+            CategoryCommand::Playlists { id, limit, offset } => {
+                commands::category_playlists(&id, limit, offset).await
+            }
         },
+        Command::Follow { command } => match command {
+            FollowCommand::Artist { ids, dry_run } => commands::follow_artist(&ids, dry_run).await,
+            FollowCommand::User { ids, dry_run } => commands::follow_user(&ids, dry_run).await,
+            FollowCommand::UnfollowArtist { ids, dry_run } => commands::unfollow_artist(&ids, dry_run).await,
+            FollowCommand::UnfollowUser { ids, dry_run } => commands::unfollow_user(&ids, dry_run).await,
+            FollowCommand::List { limit } => commands::follow_list(limit).await,
+            FollowCommand::CheckArtist { ids } => commands::follow_check_artist(&ids).await,
+            FollowCommand::CheckUser { ids } => commands::follow_check_user(&ids).await,
+        },
+        Command::Markets => commands::markets_list().await,
+        Command::Completions { shell } => {
+            print_completions(shell);
+            return;
+        }
     };
 
     if cli.json {

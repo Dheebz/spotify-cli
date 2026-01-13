@@ -31,14 +31,12 @@ pub fn format_player_status(payload: &Value, item: &Value) {
     println!("  Album: {}", album);
     println!("  Progress: {} / {}", progress, duration);
 
-    // Show device if available
     if let Some(device) = payload.get("device") {
         let device_name = device.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
         let volume = device.get("volume_percent").and_then(|v| v.as_u64()).unwrap_or(0);
         println!("  Device: {} ({}%)", device_name, volume);
     }
 
-    // Show shuffle/repeat if available
     let shuffle = payload.get("shuffle_state").and_then(|v| v.as_bool()).unwrap_or(false);
     let repeat = payload.get("repeat_state").and_then(|v| v.as_str()).unwrap_or("off");
     if shuffle || repeat != "off" {

@@ -1,8 +1,12 @@
+//! Low-level HTTP client and error types.
+//!
+//! Provides a thin wrapper around reqwest with Spotify-specific error handling.
+
 use reqwest::Client;
 use serde::Deserialize;
 use thiserror::Error;
 
-/// Spotify API error response structure
+/// Spotify API error response structure.
 #[derive(Debug, Deserialize)]
 struct SpotifyErrorResponse {
     error: SpotifyError,
@@ -15,6 +19,7 @@ struct SpotifyError {
     message: String,
 }
 
+/// HTTP errors from Spotify API requests.
 #[derive(Debug, Error)]
 pub enum HttpError {
     #[error("Network error: {0}")]
@@ -23,8 +28,8 @@ pub enum HttpError {
     #[error("{message}")]
     Api { status: u16, message: String },
 
-    #[error("Rate limited - try again later")]
-    RateLimited,
+    #[error("Rate limited - retry after {retry_after_secs} seconds")]
+    RateLimited { retry_after_secs: u64 },
 
     #[error("Token expired or invalid")]
     Unauthorized,
@@ -40,6 +45,15 @@ impl HttpError {
     /// Create an HttpError from a non-success HTTP response
     pub async fn from_response(response: reqwest::Response) -> Self {
         let status = response.status().as_u16();
+
+        // Extract Retry-After header before consuming response body
+        let retry_after = response
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(1); // Default to 1 second if not specified
+
         let body = response.text().await.unwrap_or_default();
 
         // Try to parse Spotify's error format: {"error": {"status": 401, "message": "..."}}
@@ -66,8 +80,16 @@ impl HttpError {
             401 => HttpError::Unauthorized,
             403 => HttpError::Forbidden,
             404 => HttpError::NotFound,
-            429 => HttpError::RateLimited,
+            429 => HttpError::RateLimited { retry_after_secs: retry_after },
             _ => HttpError::Api { status, message },
+        }
+    }
+
+    /// Get the retry-after duration if this is a rate limit error
+    pub fn retry_after(&self) -> Option<u64> {
+        match self {
+            HttpError::RateLimited { retry_after_secs } => Some(*retry_after_secs),
+            _ => None,
         }
     }
 
@@ -76,7 +98,7 @@ impl HttpError {
         match self {
             HttpError::Network(_) => 503,
             HttpError::Api { status, .. } => *status,
-            HttpError::RateLimited => 429,
+            HttpError::RateLimited { .. } => 429,
             HttpError::Unauthorized => 401,
             HttpError::Forbidden => 403,
             HttpError::NotFound => 404,
@@ -88,7 +110,7 @@ impl HttpError {
         match self {
             HttpError::Network(_) => "Network error - check your connection",
             HttpError::Api { message, .. } => message,
-            HttpError::RateLimited => "Too many requests - please wait a moment",
+            HttpError::RateLimited { .. } => "Too many requests - please wait a moment",
             HttpError::Unauthorized => "Session expired - run: spotify-cli auth refresh",
             HttpError::Forbidden => "You don't have permission for this action",
             HttpError::NotFound => "Resource not found",
@@ -96,18 +118,22 @@ impl HttpError {
     }
 }
 
-/// Base HTTP client - pure reqwest wrapper
+/// Base HTTP client wrapper.
+///
+/// Thin wrapper around reqwest::Client used by SpotifyApi and SpotifyAuth.
 pub struct HttpClient {
     client: Client,
 }
 
 impl HttpClient {
+    /// Create a new HTTP client.
     pub fn new() -> Self {
         Self {
             client: Client::new(),
         }
     }
 
+    /// Get the underlying reqwest client for making requests.
     pub fn inner(&self) -> &Client {
         &self.client
     }

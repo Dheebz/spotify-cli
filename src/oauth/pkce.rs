@@ -1,15 +1,28 @@
+//! PKCE (Proof Key for Code Exchange) implementation.
+//!
+//! PKCE is an extension to OAuth 2.0 that protects authorization codes from interception.
+//! It works by creating a cryptographic challenge that proves the token request comes from
+//! the same client that initiated the authorization.
+//!
+//! See: [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)
+
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 
 const VERIFIER_LENGTH: usize = 128;
 
+/// PKCE challenge and verifier pair.
+///
+/// - `verifier`: A high-entropy random string sent with the token request
+/// - `challenge`: SHA-256 hash of verifier, base64url encoded, sent with auth request
 pub struct PkceChallenge {
     pub verifier: String,
     pub challenge: String,
 }
 
 impl PkceChallenge {
+    /// Generate a new PKCE challenge/verifier pair.
     pub fn generate() -> Self {
         let verifier = generate_verifier();
         let challenge = generate_challenge(&verifier);

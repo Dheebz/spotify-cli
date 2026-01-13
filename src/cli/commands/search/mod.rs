@@ -1,16 +1,24 @@
 //! Search command modules
+//!
+//! This module is organized into submodules:
+//! - `filters` - Result filtering (ghost entries, exact matches, URI extraction)
+//! - `pins` - Pin search with fuzzy matching
+//! - `playback` - Playback helpers for search results
+//! - `scoring` - Fuzzy scoring for Spotify results
 
 mod filters;
+mod pins;
+mod playback;
 mod scoring;
 
-use crate::endpoints::player::start_resume_playback;
 use crate::endpoints::search;
-use crate::http::api::SpotifyApi;
 use crate::io::output::{ErrorKind, Response};
 use crate::storage::config::Config;
 
 use super::{with_client, SearchFilters};
-use filters::{extract_first_uri, filter_exact_matches, filter_ghost_entries, search_pins};
+use filters::{extract_first_uri, filter_exact_matches, filter_ghost_entries};
+use pins::search_pins;
+use playback::play_uri;
 use scoring::add_fuzzy_scores;
 
 pub async fn search_command(
@@ -112,21 +120,4 @@ pub async fn search_command(
         }
     })
     .await
-}
-
-async fn play_uri(client: &SpotifyApi, uri: &str) -> Response {
-    let is_context =
-        uri.contains(":album:") || uri.contains(":playlist:") || uri.contains(":artist:");
-
-    let result = if is_context {
-        start_resume_playback::start_resume_playback(client, Some(uri), None).await
-    } else {
-        let uris = vec![uri.to_string()];
-        start_resume_playback::start_resume_playback(client, None, Some(&uris)).await
-    };
-
-    match result {
-        Ok(_) => Response::success(200, format!("Playing {}", uri)),
-        Err(e) => Response::from_http_error(&e, "Failed to play"),
-    }
 }

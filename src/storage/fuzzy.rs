@@ -9,29 +9,24 @@ pub fn calculate_score(name: &str, query: &str, config: &FuzzyConfig) -> f64 {
 
     let mut score = 0.0;
 
-    // Exact match = highest score
     if name_lower == query_lower {
         return config.exact_match;
     }
 
-    // Name starts with query
     if name_lower.starts_with(&query_lower) {
         score += config.starts_with;
     }
 
-    // Name contains query
     if name_lower.contains(&query_lower) {
         score += config.contains;
     }
 
-    // Check each query word
     for word in &query_words {
         if name_lower.contains(word) {
             score += config.word_match;
         }
     }
 
-    // Levenshtein distance for typo tolerance
     let distance = levenshtein_distance(&name_lower, &query_lower);
     let max_len = name_lower.len().max(query_lower.len());
     if max_len > 0 {

@@ -5,7 +5,6 @@ use crate::endpoints::shows::{
     remove_users_saved_shows, save_shows_for_current_user,
 };
 
-// Generate standard resource commands using macros
 resource_get!(show_get, get_show::get_show, "Show");
 resource_list!(show_list, get_users_saved_shows::get_users_saved_shows, "Saved shows");
 resource_list_with_id!(show_episodes, get_show_episodes::get_show_episodes, "Show episodes", "No episodes");

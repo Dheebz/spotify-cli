@@ -22,11 +22,7 @@ impl Pin {
 
     /// Extract Spotify ID from a URL or return the input if it's already an ID
     pub fn extract_id(url_or_id: &str) -> String {
-        // Handle URLs like:
-        // https://open.spotify.com/playlist/37i9dQZEVXbsdW9lIOtMPR?si=abc123
-        // spotify:playlist:37i9dQZEVXbsdW9lIOtMPR
         if url_or_id.contains("open.spotify.com") {
-            // URL format
             url_or_id
                 .split('/')
                 .next_back()
@@ -36,14 +32,12 @@ impl Pin {
                 .unwrap_or(url_or_id)
                 .to_string()
         } else if url_or_id.contains(':') {
-            // URI format (spotify:type:id)
             url_or_id
                 .split(':')
                 .next_back()
                 .unwrap_or(url_or_id)
                 .to_string()
         } else {
-            // Already an ID
             url_or_id.to_string()
         }
     }
