@@ -1,0 +1,37 @@
+[package]
+name = "spotify-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# PKCE generation
+rand = "0.8"
+sha2 = "0.10"
+base64 = "0.22"
+
+# Callback server for OAuth
+tiny_http = "0.12"
+
+# Cross-platform directories
+dirs = "5"
+
+# Error handling
+thiserror = "2"
+
+# URL handling
+url = "2"
+urlencoding = "2"
+
+# CLI
+clap = { version = "4", features = ["derive"] }

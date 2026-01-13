@@ -1,0 +1,5 @@
+auth is a custom auth
+-> user is basically me 
+
+and player is a subsection of "me"
+but makes more sense to split out
