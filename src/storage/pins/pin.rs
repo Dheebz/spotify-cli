@@ -47,3 +47,105 @@ impl Pin {
         format!("spotify:{}:{}", self.resource_type.as_str(), self.id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pin_new() {
+        let pin = Pin::new(
+            ResourceType::Track,
+            "track123".to_string(),
+            "favorite".to_string(),
+            vec!["rock".to_string(), "chill".to_string()],
+        );
+        assert_eq!(pin.id, "track123");
+        assert_eq!(pin.alias, "favorite");
+        assert_eq!(pin.tags.len(), 2);
+    }
+
+    #[test]
+    fn pin_uri_track() {
+        let pin = Pin::new(
+            ResourceType::Track,
+            "abc123".to_string(),
+            "test".to_string(),
+            vec![],
+        );
+        assert_eq!(pin.uri(), "spotify:track:abc123");
+    }
+
+    #[test]
+    fn pin_uri_playlist() {
+        let pin = Pin::new(
+            ResourceType::Playlist,
+            "xyz789".to_string(),
+            "test".to_string(),
+            vec![],
+        );
+        assert_eq!(pin.uri(), "spotify:playlist:xyz789");
+    }
+
+    #[test]
+    fn pin_uri_album() {
+        let pin = Pin::new(
+            ResourceType::Album,
+            "album123".to_string(),
+            "test".to_string(),
+            vec![],
+        );
+        assert_eq!(pin.uri(), "spotify:album:album123");
+    }
+
+    #[test]
+    fn extract_id_from_plain_id() {
+        let id = Pin::extract_id("abc123");
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn extract_id_from_spotify_uri() {
+        let id = Pin::extract_id("spotify:track:abc123");
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn extract_id_from_spotify_url() {
+        let id = Pin::extract_id("https://open.spotify.com/track/abc123");
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn extract_id_from_spotify_url_with_query() {
+        let id = Pin::extract_id("https://open.spotify.com/track/abc123?si=xyz");
+        assert_eq!(id, "abc123");
+    }
+
+    #[test]
+    fn pin_serializes_to_json() {
+        let pin = Pin::new(
+            ResourceType::Track,
+            "abc123".to_string(),
+            "test_alias".to_string(),
+            vec!["tag1".to_string()],
+        );
+        let json = serde_json::to_value(&pin).unwrap();
+        assert_eq!(json["id"], "abc123");
+        assert_eq!(json["alias"], "test_alias");
+    }
+
+    #[test]
+    fn pin_deserializes_from_json() {
+        let json = serde_json::json!({
+            "resource_type": "track",
+            "id": "abc123",
+            "alias": "test_alias",
+            "tags": ["tag1", "tag2"]
+        });
+        let pin: Pin = serde_json::from_value(json).unwrap();
+        assert_eq!(pin.id, "abc123");
+        assert_eq!(pin.alias, "test_alias");
+        assert_eq!(pin.tags.len(), 2);
+    }
+}

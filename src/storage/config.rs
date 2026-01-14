@@ -182,4 +182,85 @@ client_id = ""
         // The parse succeeds, but load() would fail with MissingField
         assert!(config.client_id().is_empty());
     }
+
+    #[test]
+    fn fuzzy_config_default_values() {
+        let fuzzy = FuzzyConfig::default();
+        assert_eq!(fuzzy.exact_match, 100.0);
+        assert_eq!(fuzzy.starts_with, 50.0);
+        assert_eq!(fuzzy.contains, 30.0);
+        assert_eq!(fuzzy.word_match, 10.0);
+        assert_eq!(fuzzy.similarity_threshold, 0.6);
+        assert_eq!(fuzzy.similarity_weight, 20.0);
+    }
+
+    #[test]
+    fn search_config_default_values() {
+        let search = SearchConfig::default();
+        assert!(search.show_scores);
+        assert!(!search.sort_by_score);
+    }
+
+    #[test]
+    fn config_with_search_settings() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+
+[search]
+show_scores = false
+sort_by_score = true
+"#;
+
+        let config: Config = toml::from_str(toml).unwrap();
+        assert!(!config.show_scores());
+        assert!(config.sort_by_score());
+    }
+
+    #[test]
+    fn config_with_fuzzy_settings() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+
+[search.fuzzy]
+exact_match = 200.0
+starts_with = 100.0
+"#;
+
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.fuzzy().exact_match, 200.0);
+        assert_eq!(config.fuzzy().starts_with, 100.0);
+        // Defaults should still apply for unset fields
+        assert_eq!(config.fuzzy().contains, 30.0);
+    }
+
+    #[test]
+    fn config_defaults_when_search_section_missing() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+"#;
+
+        let config: Config = toml::from_str(toml).unwrap();
+        // Default search config values
+        assert!(config.show_scores());
+        assert!(!config.sort_by_score());
+    }
+
+    #[test]
+    fn config_error_display() {
+        let err = ConfigError::NotFound("/path/to/config".to_string());
+        assert!(err.to_string().contains("/path/to/config"));
+
+        let err = ConfigError::MissingField("client_id".to_string());
+        assert!(err.to_string().contains("client_id"));
+    }
+
+    #[test]
+    fn spotify_config_deserializes() {
+        let toml = r#"client_id = "test_client_id""#;
+        let config: SpotifyConfig = toml::from_str(toml).unwrap();
+        assert_eq!(config.client_id, "test_client_id");
+    }
 }

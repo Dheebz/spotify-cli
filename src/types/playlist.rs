@@ -146,3 +146,136 @@ pub struct CategoryPlaylists {
     /// Paginated playlists.
     pub playlists: Paginated<PlaylistSimplified>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn playlist_simplified_deserializes() {
+        let json = json!({
+            "id": "playlist123",
+            "name": "My Playlist",
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist123",
+            "tracks": {"total": 50}
+        });
+        let playlist: PlaylistSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.id, "playlist123");
+        assert_eq!(playlist.name, "My Playlist");
+        assert_eq!(playlist.track_count(), 50);
+    }
+
+    #[test]
+    fn playlist_simplified_track_count_zero_when_none() {
+        let json = json!({
+            "id": "playlist123",
+            "name": "My Playlist",
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist123"
+        });
+        let playlist: PlaylistSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.track_count(), 0);
+    }
+
+    #[test]
+    fn playlist_simplified_image_url() {
+        let json = json!({
+            "id": "playlist123",
+            "name": "My Playlist",
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist123",
+            "images": [{"url": "https://cover.jpg", "height": 300, "width": 300}]
+        });
+        let playlist: PlaylistSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.image_url(), Some("https://cover.jpg"));
+    }
+
+    #[test]
+    fn playlist_full_deserializes() {
+        let json = json!({
+            "id": "playlist123",
+            "name": "My Playlist",
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist123",
+            "owner": {"id": "user123", "type": "user", "uri": "spotify:user:user123"},
+            "tracks": {"href": "https://api.spotify.com/v1/playlists/playlist123/tracks", "items": [], "total": 0, "limit": 100, "offset": 0},
+            "followers": {"total": 500}
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.id, "playlist123");
+        assert_eq!(playlist.owner_name(), Some("user123"));
+    }
+
+    #[test]
+    fn playlist_owner_name_prefers_display_name() {
+        let json = json!({
+            "id": "playlist123",
+            "name": "My Playlist",
+            "type": "playlist",
+            "uri": "spotify:playlist:playlist123",
+            "owner": {
+                "id": "user123",
+                "display_name": "John Doe",
+                "type": "user",
+                "uri": "spotify:user:user123"
+            }
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.owner_name(), Some("John Doe"));
+    }
+
+    #[test]
+    fn playlist_track_deserializes() {
+        let json = json!({
+            "added_at": "2024-01-15T10:30:00Z",
+            "is_local": false,
+            "track": null
+        });
+        let track: PlaylistTrack = serde_json::from_value(json).unwrap();
+        assert!(track.track.is_none());
+        assert_eq!(track.is_local, Some(false));
+    }
+
+    #[test]
+    fn playlist_tracks_ref_deserializes() {
+        let json = json!({
+            "href": "https://api.spotify.com/v1/playlists/123/tracks",
+            "total": 42
+        });
+        let tracks_ref: PlaylistTracksRef = serde_json::from_value(json).unwrap();
+        assert_eq!(tracks_ref.total, 42);
+    }
+
+    #[test]
+    fn featured_playlists_deserializes() {
+        let json = json!({
+            "message": "Featured today",
+            "playlists": {
+                "href": "https://api.spotify.com/v1/browse/featured-playlists",
+                "items": [],
+                "total": 0,
+                "limit": 20,
+                "offset": 0
+            }
+        });
+        let featured: FeaturedPlaylists = serde_json::from_value(json).unwrap();
+        assert_eq!(featured.message, Some("Featured today".to_string()));
+    }
+
+    #[test]
+    fn category_playlists_deserializes() {
+        let json = json!({
+            "playlists": {
+                "href": "https://api.spotify.com/v1/browse/categories/pop/playlists",
+                "items": [],
+                "total": 0,
+                "limit": 20,
+                "offset": 0
+            }
+        });
+        let category: CategoryPlaylists = serde_json::from_value(json).unwrap();
+        assert!(category.playlists.items.is_empty());
+    }
+}

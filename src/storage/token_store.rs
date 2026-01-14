@@ -3,6 +3,11 @@
 //! Stores tokens in JSON format in the user's config directory.
 //! Tokens are automatically saved after successful authentication
 //! and loaded on subsequent CLI invocations.
+//!
+//! ## Security
+//!
+//! Token files are stored with restrictive permissions (0600 on Unix)
+//! to prevent other users from reading sensitive credentials.
 
 use std::fs;
 use std::path::PathBuf;
@@ -44,6 +49,7 @@ impl TokenStore {
     /// Save a token to disk.
     ///
     /// Creates the parent directory if it doesn't exist.
+    /// Sets restrictive file permissions (0600) on Unix systems.
     pub fn save(&self, token: &Token) -> Result<(), TokenStoreError> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -52,7 +58,35 @@ impl TokenStore {
         let json = serde_json::to_string_pretty(token)?;
         fs::write(&self.path, json)?;
 
+        // Set restrictive permissions on Unix
+        self.set_secure_permissions();
+
         Ok(())
+    }
+
+    /// Set secure file permissions (owner read/write only).
+    ///
+    /// On Unix, sets mode to 0600 (rw-------).
+    /// On other platforms, this is a no-op (permissions handled by OS).
+    #[cfg(unix)]
+    fn set_secure_permissions(&self) {
+        use std::os::unix::fs::PermissionsExt;
+        use tracing::warn;
+
+        if let Ok(metadata) = fs::metadata(&self.path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o600); // Owner read/write only
+            if let Err(e) = fs::set_permissions(&self.path, perms) {
+                warn!(path = %self.path.display(), error = %e, "Failed to set secure permissions on token file");
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    fn set_secure_permissions(&self) {
+        // On Windows, file permissions work differently via ACLs.
+        // The file is created with the user's default permissions,
+        // which is typically secure enough for single-user systems.
     }
 
     /// Load a token from disk.
@@ -149,6 +183,26 @@ mod tests {
 
         store.save(&token).unwrap();
         assert!(store.exists());
+
+        store.delete().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_sets_secure_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let store = temp_store();
+        let token = make_token();
+
+        store.save(&token).unwrap();
+
+        let metadata = fs::metadata(store.path()).unwrap();
+        let mode = metadata.permissions().mode();
+
+        // Check that the file mode is 0600 (owner read/write only)
+        // The mode includes the file type bits, so we mask to get just permissions
+        assert_eq!(mode & 0o777, 0o600, "Token file should have 0600 permissions");
 
         store.delete().unwrap();
     }

@@ -144,3 +144,69 @@ impl Default for HttpClient {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn http_error_status_codes() {
+        assert_eq!(HttpError::Unauthorized.status_code(), 401);
+        assert_eq!(HttpError::Forbidden.status_code(), 403);
+        assert_eq!(HttpError::NotFound.status_code(), 404);
+        assert_eq!(HttpError::RateLimited { retry_after_secs: 5 }.status_code(), 429);
+        assert_eq!(
+            HttpError::Api {
+                status: 500,
+                message: "Server error".to_string()
+            }
+            .status_code(),
+            500
+        );
+    }
+
+    #[test]
+    fn http_error_user_messages() {
+        assert_eq!(HttpError::Unauthorized.user_message(), "Session expired - run: spotify-cli auth refresh");
+        assert_eq!(HttpError::Forbidden.user_message(), "You don't have permission for this action");
+        assert_eq!(HttpError::NotFound.user_message(), "Resource not found");
+        assert_eq!(HttpError::RateLimited { retry_after_secs: 5 }.user_message(), "Too many requests - please wait a moment");
+        assert_eq!(
+            HttpError::Api {
+                status: 500,
+                message: "Custom error".to_string()
+            }
+            .user_message(),
+            "Custom error"
+        );
+    }
+
+    #[test]
+    fn http_error_retry_after() {
+        assert_eq!(HttpError::RateLimited { retry_after_secs: 30 }.retry_after(), Some(30));
+        assert_eq!(HttpError::Unauthorized.retry_after(), None);
+        assert_eq!(HttpError::NotFound.retry_after(), None);
+    }
+
+    #[test]
+    fn http_error_display() {
+        assert_eq!(format!("{}", HttpError::Unauthorized), "Token expired or invalid");
+        assert_eq!(format!("{}", HttpError::Forbidden), "Access denied");
+        assert_eq!(format!("{}", HttpError::NotFound), "Resource not found");
+        assert_eq!(
+            format!("{}", HttpError::RateLimited { retry_after_secs: 10 }),
+            "Rate limited - retry after 10 seconds"
+        );
+        assert_eq!(
+            format!("{}", HttpError::Api { status: 400, message: "Bad request".to_string() }),
+            "Bad request"
+        );
+    }
+
+    #[test]
+    fn http_client_default() {
+        let client = HttpClient::default();
+        // Just verify it creates successfully
+        let _ = client.inner();
+    }
+}

@@ -10,7 +10,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 
-const VERIFIER_LENGTH: usize = 128;
+use crate::constants::PKCE_VERIFIER_LENGTH;
 
 /// PKCE challenge and verifier pair.
 ///
@@ -39,7 +39,7 @@ fn generate_verifier() -> String {
 
     let mut rng = rand::thread_rng();
 
-    (0..VERIFIER_LENGTH)
+    (0..PKCE_VERIFIER_LENGTH)
         .map(|_| {
             let idx = rng.gen_range(0..CHARSET.len());
             CHARSET[idx] as char
@@ -62,7 +62,7 @@ mod tests {
     #[test]
     fn verifier_has_correct_length() {
         let pkce = PkceChallenge::generate();
-        assert_eq!(pkce.verifier.len(), VERIFIER_LENGTH);
+        assert_eq!(pkce.verifier.len(), PKCE_VERIFIER_LENGTH);
     }
 
     #[test]

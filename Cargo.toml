@@ -39,7 +39,8 @@ clap_complete = "4"
 
 # Logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 [dev-dependencies]
 tempfile = "3"
+wiremock = "0.6"

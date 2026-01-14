@@ -198,3 +198,247 @@ impl Device {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn device_deserializes() {
+        let json = json!({
+            "id": "device123",
+            "is_active": true,
+            "name": "Living Room Speaker",
+            "type": "Speaker",
+            "volume_percent": 75
+        });
+        let device: Device = serde_json::from_value(json).unwrap();
+        assert_eq!(device.id, Some("device123".to_string()));
+        assert!(device.is_active);
+        assert_eq!(device.name, "Living Room Speaker");
+        assert_eq!(device.device_type, "Speaker");
+    }
+
+    #[test]
+    fn device_type_display_known_types() {
+        let make_device = |t: &str| Device {
+            id: None,
+            is_active: false,
+            is_private_session: None,
+            is_restricted: None,
+            name: "Test".to_string(),
+            device_type: t.to_string(),
+            volume_percent: None,
+            supports_volume: None,
+        };
+
+        assert_eq!(make_device("Computer").device_type_display(), "Computer");
+        assert_eq!(make_device("Smartphone").device_type_display(), "Phone");
+        assert_eq!(make_device("Speaker").device_type_display(), "Speaker");
+        assert_eq!(make_device("TV").device_type_display(), "TV");
+        assert_eq!(make_device("AVR").device_type_display(), "Receiver");
+        assert_eq!(make_device("Automobile").device_type_display(), "Car");
+        assert_eq!(make_device("Tablet").device_type_display(), "Tablet");
+    }
+
+    #[test]
+    fn device_type_display_unknown() {
+        let device = Device {
+            id: None,
+            is_active: false,
+            is_private_session: None,
+            is_restricted: None,
+            name: "Test".to_string(),
+            device_type: "NewDeviceType".to_string(),
+            volume_percent: None,
+            supports_volume: None,
+        };
+        assert_eq!(device.device_type_display(), "NewDeviceType");
+    }
+
+    #[test]
+    fn devices_response_deserializes() {
+        let json = json!({
+            "devices": [
+                {"id": "dev1", "is_active": true, "name": "Device 1", "type": "Computer"},
+                {"id": "dev2", "is_active": false, "name": "Device 2", "type": "Speaker"}
+            ]
+        });
+        let resp: DevicesResponse = serde_json::from_value(json).unwrap();
+        assert_eq!(resp.devices.len(), 2);
+    }
+
+    #[test]
+    fn playback_context_deserializes() {
+        let json = json!({
+            "type": "playlist",
+            "uri": "spotify:playlist:abc123",
+            "href": "https://api.spotify.com/v1/playlists/abc123"
+        });
+        let ctx: PlaybackContext = serde_json::from_value(json).unwrap();
+        assert_eq!(ctx.context_type, Some("playlist".to_string()));
+    }
+
+    #[test]
+    fn playback_actions_deserializes() {
+        let json = json!({
+            "pausing": true,
+            "resuming": true,
+            "seeking": true,
+            "skipping_next": true,
+            "skipping_prev": false
+        });
+        let actions: PlaybackActions = serde_json::from_value(json).unwrap();
+        assert_eq!(actions.pausing, Some(true));
+        assert_eq!(actions.skipping_prev, Some(false));
+    }
+
+    #[test]
+    fn playback_state_deserializes() {
+        let json = json!({
+            "is_playing": true,
+            "progress_ms": 60000,
+            "repeat_state": "off",
+            "shuffle_state": false
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert!(state.is_playing);
+        assert_eq!(state.progress_ms, Some(60000));
+        assert_eq!(state.repeat_state, Some("off".to_string()));
+    }
+
+    #[test]
+    fn playback_state_track_name() {
+        let json = json!({
+            "is_playing": true,
+            "item": {
+                "id": "track1",
+                "name": "Test Track",
+                "type": "track",
+                "uri": "spotify:track:track1",
+                "duration_ms": 200000
+            }
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.track_name(), Some("Test Track"));
+    }
+
+    #[test]
+    fn playback_state_track_name_none() {
+        let json = json!({
+            "is_playing": false
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert!(state.track_name().is_none());
+    }
+
+    #[test]
+    fn playback_state_progress_str() {
+        let json = json!({
+            "is_playing": true,
+            "progress_ms": 125000  // 2:05
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.progress_str(), "2:05");
+    }
+
+    #[test]
+    fn playback_state_progress_str_zero() {
+        let json = json!({
+            "is_playing": false
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.progress_str(), "0:00");
+    }
+
+    #[test]
+    fn playback_state_duration_str() {
+        let json = json!({
+            "is_playing": true,
+            "item": {
+                "id": "track1",
+                "name": "Test",
+                "type": "track",
+                "uri": "spotify:track:track1",
+                "duration_ms": 210000  // 3:30
+            }
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.duration_str(), "3:30");
+    }
+
+    #[test]
+    fn playback_state_duration_str_no_item() {
+        let json = json!({
+            "is_playing": false
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.duration_str(), "0:00");
+    }
+
+    #[test]
+    fn playback_state_device_name() {
+        let json = json!({
+            "is_playing": true,
+            "device": {
+                "id": "dev1",
+                "is_active": true,
+                "name": "My Computer",
+                "type": "Computer"
+            }
+        });
+        let state: PlaybackState = serde_json::from_value(json).unwrap();
+        assert_eq!(state.device_name(), Some("My Computer"));
+    }
+
+    #[test]
+    fn queue_response_deserializes() {
+        let json = json!({
+            "currently_playing": null,
+            "queue": []
+        });
+        let queue: QueueResponse = serde_json::from_value(json).unwrap();
+        assert!(queue.currently_playing.is_none());
+        assert!(queue.queue.is_empty());
+    }
+
+    #[test]
+    fn play_history_deserializes() {
+        let json = json!({
+            "track": {
+                "id": "track1",
+                "name": "Recent Track",
+                "type": "track",
+                "uri": "spotify:track:track1",
+                "duration_ms": 180000
+            },
+            "played_at": "2024-01-15T10:30:00Z"
+        });
+        let history: PlayHistory = serde_json::from_value(json).unwrap();
+        assert_eq!(history.track.name, "Recent Track");
+        assert_eq!(history.played_at, "2024-01-15T10:30:00Z");
+    }
+
+    #[test]
+    fn recently_played_response_deserializes() {
+        let json = json!({
+            "items": [],
+            "limit": 20
+        });
+        let resp: RecentlyPlayedResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.items.is_empty());
+        assert_eq!(resp.limit, Some(20));
+    }
+
+    #[test]
+    fn recently_played_cursors_deserializes() {
+        let json = json!({
+            "after": "1234567890",
+            "before": "0987654321"
+        });
+        let cursors: RecentlyPlayedCursors = serde_json::from_value(json).unwrap();
+        assert_eq!(cursors.after, Some("1234567890".to_string()));
+        assert_eq!(cursors.before, Some("0987654321".to_string()));
+    }
+}

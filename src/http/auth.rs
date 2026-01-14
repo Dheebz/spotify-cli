@@ -5,8 +5,7 @@
 use thiserror::Error;
 
 use super::client::HttpClient;
-
-const BASE_URL: &str = "https://accounts.spotify.com";
+use crate::constants::SPOTIFY_AUTH_BASE_URL;
 
 /// Errors from authentication requests.
 #[derive(Debug, Error)]
@@ -35,7 +34,7 @@ impl SpotifyAuth {
 
     /// Build a URL for the Spotify accounts endpoint.
     pub fn url(path: &str) -> String {
-        format!("{}{}", BASE_URL, path)
+        format!("{}{}", SPOTIFY_AUTH_BASE_URL, path)
     }
 
     /// Exchange authorization code for tokens (PKCE flow)

@@ -5,29 +5,17 @@ use spotify_cli::cli::{
     LibraryCommand, PinCommand, PlaylistCommand, PlayerCommand, QueueCommand, ShowCommand,
     UserCommand,
 };
+use spotify_cli::cli::commands::{self, ArtistQuery, ArtistView};
 use spotify_cli::io::output::{print_human, print_json};
-use spotify_cli::cli::commands;
-use tracing_subscriber::EnvFilter;
-
-fn init_logging(verbose: u8) {
-    let filter = match verbose {
-        0 => EnvFilter::new("warn"),
-        1 => EnvFilter::new("info"),
-        2 => EnvFilter::new("debug"),
-        _ => EnvFilter::new("trace"),
-    };
-
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_target(false)
-        .without_time()
-        .init();
-}
+use spotify_cli::logging::{LogConfig, LogFormat};
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    init_logging(cli.verbose);
+
+    // Initialize logging with configured format
+    let log_format = cli.log_format.parse::<LogFormat>().unwrap_or_default();
+    LogConfig::new(cli.verbose).format(log_format).init();
 
     let response = match cli.command {
         Command::Auth { command } => match command {
@@ -204,7 +192,24 @@ async fn main() {
                 market,
                 limit,
                 offset,
-            } => commands::info_artist(id.as_deref(), id_only, top_tracks, albums, related, &market, limit, offset).await,
+            } => {
+                let view = if top_tracks {
+                    ArtistView::TopTracks
+                } else if albums {
+                    ArtistView::Albums
+                } else if related {
+                    ArtistView::Related
+                } else {
+                    ArtistView::Details
+                };
+                let query = ArtistQuery::new()
+                    .with_id(id)
+                    .id_only(id_only)
+                    .view(view)
+                    .market(market)
+                    .paginate(limit, offset);
+                commands::info_artist(query).await
+            }
         },
         Command::User { command } => match command {
             UserCommand::Profile => commands::user_profile().await,

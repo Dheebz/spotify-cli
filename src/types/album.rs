@@ -144,3 +144,178 @@ pub struct SavedAlbum {
     /// The album.
     pub album: Album,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn album_type_deserializes() {
+        let json = json!("album");
+        let album_type: AlbumType = serde_json::from_value(json).unwrap();
+        assert_eq!(album_type, AlbumType::Album);
+
+        let json = json!("single");
+        let album_type: AlbumType = serde_json::from_value(json).unwrap();
+        assert_eq!(album_type, AlbumType::Single);
+
+        let json = json!("compilation");
+        let album_type: AlbumType = serde_json::from_value(json).unwrap();
+        assert_eq!(album_type, AlbumType::Compilation);
+    }
+
+    #[test]
+    fn album_simplified_deserializes() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "album_type": "album",
+            "total_tracks": 12,
+            "release_date": "2024-01-15"
+        });
+        let album: AlbumSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(album.id, "album123");
+        assert_eq!(album.name, "Test Album");
+        assert_eq!(album.total_tracks, Some(12));
+    }
+
+    #[test]
+    fn album_simplified_image_url() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "images": [{"url": "https://cover.jpg", "height": 640, "width": 640}]
+        });
+        let album: AlbumSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(album.image_url(), Some("https://cover.jpg"));
+    }
+
+    #[test]
+    fn album_simplified_image_url_none() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123"
+        });
+        let album: AlbumSimplified = serde_json::from_value(json).unwrap();
+        assert!(album.image_url().is_none());
+    }
+
+    #[test]
+    fn album_simplified_artist_name() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "artists": [{"id": "artist1", "name": "Test Artist", "type": "artist", "uri": "spotify:artist:artist1"}]
+        });
+        let album: AlbumSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(album.artist_name(), Some("Test Artist"));
+    }
+
+    #[test]
+    fn album_simplified_artist_name_none() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123"
+        });
+        let album: AlbumSimplified = serde_json::from_value(json).unwrap();
+        assert!(album.artist_name().is_none());
+    }
+
+    #[test]
+    fn album_full_deserializes() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "album_type": "album",
+            "total_tracks": 12,
+            "release_date": "2024-01-15",
+            "popularity": 75,
+            "label": "Test Label",
+            "genres": ["rock", "alternative"]
+        });
+        let album: Album = serde_json::from_value(json).unwrap();
+        assert_eq!(album.id, "album123");
+        assert_eq!(album.popularity, Some(75));
+        assert_eq!(album.label, Some("Test Label".to_string()));
+    }
+
+    #[test]
+    fn album_image_url() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "images": [{"url": "https://large.jpg", "height": 640, "width": 640}]
+        });
+        let album: Album = serde_json::from_value(json).unwrap();
+        assert_eq!(album.image_url(), Some("https://large.jpg"));
+    }
+
+    #[test]
+    fn album_artist_name() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "artists": [{"id": "artist1", "name": "Primary Artist", "type": "artist", "uri": "spotify:artist:artist1"}]
+        });
+        let album: Album = serde_json::from_value(json).unwrap();
+        assert_eq!(album.artist_name(), Some("Primary Artist"));
+    }
+
+    #[test]
+    fn album_release_year() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123",
+            "release_date": "2024-01-15"
+        });
+        let album: Album = serde_json::from_value(json).unwrap();
+        assert_eq!(album.release_year(), Some("2024"));
+    }
+
+    #[test]
+    fn album_release_year_none() {
+        let json = json!({
+            "id": "album123",
+            "name": "Test Album",
+            "type": "album",
+            "uri": "spotify:album:album123"
+        });
+        let album: Album = serde_json::from_value(json).unwrap();
+        assert!(album.release_year().is_none());
+    }
+
+    #[test]
+    fn saved_album_deserializes() {
+        let json = json!({
+            "added_at": "2024-01-15T10:30:00Z",
+            "album": {
+                "id": "album123",
+                "name": "Test Album",
+                "type": "album",
+                "uri": "spotify:album:album123"
+            }
+        });
+        let saved: SavedAlbum = serde_json::from_value(json).unwrap();
+        assert_eq!(saved.added_at, "2024-01-15T10:30:00Z");
+        assert_eq!(saved.album.id, "album123");
+    }
+}

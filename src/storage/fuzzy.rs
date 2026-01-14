@@ -109,4 +109,88 @@ mod tests {
         assert_eq!(levenshtein_distance("tool", "tool"), 0);
         assert_eq!(levenshtein_distance("", "abc"), 3);
     }
+
+    #[test]
+    fn levenshtein_empty_strings() {
+        assert_eq!(levenshtein_distance("", ""), 0);
+        assert_eq!(levenshtein_distance("abc", ""), 3);
+        assert_eq!(levenshtein_distance("", "xyz"), 3);
+    }
+
+    #[test]
+    fn levenshtein_single_char() {
+        assert_eq!(levenshtein_distance("a", "b"), 1);
+        assert_eq!(levenshtein_distance("a", "a"), 0);
+    }
+
+    #[test]
+    fn levenshtein_longer_strings() {
+        assert_eq!(levenshtein_distance("hello", "hello"), 0);
+        assert_eq!(levenshtein_distance("hello", "hallo"), 1);
+        assert_eq!(levenshtein_distance("hello", "world"), 4);
+    }
+
+    #[test]
+    fn contains_partial_match() {
+        let config = default_config();
+        let score = calculate_score("My Favorite Tool", "tool", &config);
+        // Should get contains + word_match bonus
+        assert!(score >= config.contains);
+    }
+
+    #[test]
+    fn word_match_scoring() {
+        let config = default_config();
+        let score = calculate_score("rock and roll", "rock roll", &config);
+        // Should get word match bonuses for "rock" and "roll"
+        assert!(score >= config.word_match * 2.0);
+    }
+
+    #[test]
+    fn similarity_bonus_applied() {
+        let config = default_config();
+        // "tools" is very similar to "tool"
+        let score = calculate_score("tools", "tool", &config);
+        // Should get similarity bonus since they are 80% similar
+        assert!(score > 0.0);
+    }
+
+    #[test]
+    fn case_insensitive_matching() {
+        let config = default_config();
+        let score1 = calculate_score("TOOL", "tool", &config);
+        let score2 = calculate_score("tool", "TOOL", &config);
+        let score3 = calculate_score("Tool", "TOOL", &config);
+        assert_eq!(score1, score2);
+        assert_eq!(score2, score3);
+    }
+
+    #[test]
+    fn custom_config_values() {
+        let config = FuzzyConfig {
+            exact_match: 200.0,
+            starts_with: 100.0,
+            contains: 50.0,
+            word_match: 20.0,
+            similarity_threshold: 0.5,
+            similarity_weight: 30.0,
+        };
+        let score = calculate_score("test", "test", &config);
+        assert_eq!(score, 200.0);
+    }
+
+    #[test]
+    fn zero_score_for_unrelated() {
+        let config = FuzzyConfig {
+            exact_match: 100.0,
+            starts_with: 50.0,
+            contains: 30.0,
+            word_match: 10.0,
+            similarity_threshold: 0.9, // High threshold
+            similarity_weight: 20.0,
+        };
+        let score = calculate_score("completely different", "xyz", &config);
+        // Very different strings with high threshold should score low
+        assert!(score < 30.0); // Less than contains
+    }
 }

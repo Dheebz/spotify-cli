@@ -95,3 +95,98 @@ pub struct FollowedArtistsCursored {
     /// The followed artists.
     pub items: Vec<Artist>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn artist_simplified_deserializes() {
+        let json = json!({
+            "id": "abc123",
+            "name": "Test Artist",
+            "type": "artist",
+            "uri": "spotify:artist:abc123"
+        });
+        let artist: ArtistSimplified = serde_json::from_value(json).unwrap();
+        assert_eq!(artist.id, "abc123");
+        assert_eq!(artist.name, "Test Artist");
+    }
+
+    #[test]
+    fn artist_full_deserializes() {
+        let json = json!({
+            "id": "abc123",
+            "name": "Test Artist",
+            "type": "artist",
+            "uri": "spotify:artist:abc123",
+            "genres": ["rock", "alternative"],
+            "popularity": 75,
+            "followers": {"total": 1000000}
+        });
+        let artist: Artist = serde_json::from_value(json).unwrap();
+        assert_eq!(artist.id, "abc123");
+        assert_eq!(artist.popularity, Some(75));
+        assert_eq!(artist.genres.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn artist_image_url_returns_first_image() {
+        let json = json!({
+            "id": "abc123",
+            "name": "Test Artist",
+            "type": "artist",
+            "uri": "spotify:artist:abc123",
+            "images": [
+                {"url": "https://large.jpg", "height": 640, "width": 640},
+                {"url": "https://medium.jpg", "height": 300, "width": 300}
+            ]
+        });
+        let artist: Artist = serde_json::from_value(json).unwrap();
+        assert_eq!(artist.image_url(), Some("https://large.jpg"));
+    }
+
+    #[test]
+    fn artist_image_url_returns_none_when_no_images() {
+        let json = json!({
+            "id": "abc123",
+            "name": "Test Artist",
+            "type": "artist",
+            "uri": "spotify:artist:abc123"
+        });
+        let artist: Artist = serde_json::from_value(json).unwrap();
+        assert!(artist.image_url().is_none());
+    }
+
+    #[test]
+    fn artist_top_tracks_response_deserializes() {
+        let json = json!({
+            "tracks": []
+        });
+        let resp: ArtistTopTracksResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.tracks.is_empty());
+    }
+
+    #[test]
+    fn related_artists_response_deserializes() {
+        let json = json!({
+            "artists": []
+        });
+        let resp: RelatedArtistsResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.artists.is_empty());
+    }
+
+    #[test]
+    fn followed_artists_response_deserializes() {
+        let json = json!({
+            "artists": {
+                "items": [],
+                "limit": 20,
+                "total": 0
+            }
+        });
+        let resp: FollowedArtistsResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.artists.items.is_empty());
+    }
+}

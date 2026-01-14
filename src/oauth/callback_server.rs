@@ -8,10 +8,12 @@ use thiserror::Error;
 use tiny_http::{Response, Server};
 use url::Url;
 
-/// Default port for the callback server.
-pub const DEFAULT_PORT: u16 = 8888;
-/// Path where Spotify redirects after authorization.
-pub const CALLBACK_PATH: &str = "/callback";
+use crate::constants::{DEFAULT_OAUTH_PORT, OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_TIMEOUT_SECS};
+
+/// Re-export for backward compatibility.
+pub const DEFAULT_PORT: u16 = DEFAULT_OAUTH_PORT;
+/// Re-export for backward compatibility.
+pub const CALLBACK_PATH: &str = OAUTH_CALLBACK_PATH;
 
 #[derive(Debug, Error)]
 pub enum CallbackError {
@@ -52,7 +54,7 @@ impl CallbackServer {
     pub fn new(port: u16) -> Self {
         Self {
             port,
-            timeout: Duration::from_secs(300), // 5 minute timeout
+            timeout: Duration::from_secs(OAUTH_CALLBACK_TIMEOUT_SECS),
         }
     }
 

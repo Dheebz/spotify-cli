@@ -127,3 +127,121 @@ pub struct TopArtistsResponse {
     /// The top artists.
     pub items: Vec<super::artist::Artist>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn user_public_deserializes() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123",
+            "display_name": "John Doe"
+        });
+        let user: UserPublic = serde_json::from_value(json).unwrap();
+        assert_eq!(user.id, "user123");
+        assert_eq!(user.display_name, Some("John Doe".to_string()));
+    }
+
+    #[test]
+    fn user_public_image_url() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123",
+            "images": [{"url": "https://profile.jpg", "height": 300, "width": 300}]
+        });
+        let user: UserPublic = serde_json::from_value(json).unwrap();
+        assert_eq!(user.image_url(), Some("https://profile.jpg"));
+    }
+
+    #[test]
+    fn user_public_image_url_none_when_empty() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123"
+        });
+        let user: UserPublic = serde_json::from_value(json).unwrap();
+        assert!(user.image_url().is_none());
+    }
+
+    #[test]
+    fn user_private_deserializes() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123",
+            "email": "user@example.com",
+            "product": "premium",
+            "country": "US"
+        });
+        let user: UserPrivate = serde_json::from_value(json).unwrap();
+        assert_eq!(user.id, "user123");
+        assert_eq!(user.email, Some("user@example.com".to_string()));
+        assert!(user.is_premium());
+    }
+
+    #[test]
+    fn user_private_is_premium_false_for_free() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123",
+            "product": "free"
+        });
+        let user: UserPrivate = serde_json::from_value(json).unwrap();
+        assert!(!user.is_premium());
+    }
+
+    #[test]
+    fn user_private_is_premium_false_when_none() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123"
+        });
+        let user: UserPrivate = serde_json::from_value(json).unwrap();
+        assert!(!user.is_premium());
+    }
+
+    #[test]
+    fn explicit_content_deserializes() {
+        let json = json!({
+            "filter_enabled": true,
+            "filter_locked": false
+        });
+        let explicit: ExplicitContent = serde_json::from_value(json).unwrap();
+        assert_eq!(explicit.filter_enabled, Some(true));
+        assert_eq!(explicit.filter_locked, Some(false));
+    }
+
+    #[test]
+    fn top_tracks_response_deserializes() {
+        let json = json!({
+            "items": [],
+            "total": 50,
+            "limit": 20,
+            "offset": 0
+        });
+        let resp: TopTracksResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.items.is_empty());
+        assert_eq!(resp.total, Some(50));
+    }
+
+    #[test]
+    fn top_artists_response_deserializes() {
+        let json = json!({
+            "items": [],
+            "total": 50,
+            "limit": 20,
+            "offset": 0
+        });
+        let resp: TopArtistsResponse = serde_json::from_value(json).unwrap();
+        assert!(resp.items.is_empty());
+        assert_eq!(resp.total, Some(50));
+    }
+}

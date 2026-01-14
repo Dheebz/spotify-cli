@@ -261,3 +261,265 @@ impl<'a> Endpoint<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn player_endpoints() {
+        assert_eq!(Endpoint::PlayerState.path(), "/me/player");
+        assert_eq!(Endpoint::PlayerCurrentlyPlaying.path(), "/me/player/currently-playing");
+        assert_eq!(Endpoint::PlayerPlay.path(), "/me/player/play");
+        assert_eq!(Endpoint::PlayerPause.path(), "/me/player/pause");
+        assert_eq!(Endpoint::PlayerNext.path(), "/me/player/next");
+        assert_eq!(Endpoint::PlayerPrevious.path(), "/me/player/previous");
+        assert_eq!(Endpoint::PlayerQueue.path(), "/me/player/queue");
+        assert_eq!(Endpoint::PlayerDevices.path(), "/me/player/devices");
+        assert_eq!(Endpoint::PlayerRecentlyPlayed.path(), "/me/player/recently-played");
+    }
+
+    #[test]
+    fn player_endpoints_with_params() {
+        assert_eq!(
+            Endpoint::PlayerSeek { position_ms: 30000 }.path(),
+            "/me/player/seek?position_ms=30000"
+        );
+        assert_eq!(
+            Endpoint::PlayerVolume { volume_percent: 50 }.path(),
+            "/me/player/volume?volume_percent=50"
+        );
+        assert_eq!(
+            Endpoint::PlayerShuffle { state: true }.path(),
+            "/me/player/shuffle?state=true"
+        );
+        assert_eq!(
+            Endpoint::PlayerRepeat { state: "track" }.path(),
+            "/me/player/repeat?state=track"
+        );
+    }
+
+    #[test]
+    fn queue_add_encodes_uri() {
+        let uri = "spotify:track:abc123";
+        let path = Endpoint::PlayerQueueAdd { uri }.path();
+        assert!(path.starts_with("/me/player/queue?uri="));
+        assert!(path.contains("spotify"));
+    }
+
+    #[test]
+    fn playlist_endpoints() {
+        assert_eq!(
+            Endpoint::Playlist { id: "abc123" }.path(),
+            "/playlists/abc123"
+        );
+        assert_eq!(
+            Endpoint::PlaylistTracks { id: "abc123" }.path(),
+            "/playlists/abc123/tracks"
+        );
+        assert_eq!(
+            Endpoint::PlaylistItems { id: "abc123", limit: 50, offset: 0 }.path(),
+            "/playlists/abc123/tracks?limit=50&offset=0"
+        );
+        assert_eq!(
+            Endpoint::PlaylistFollowers { id: "abc123" }.path(),
+            "/playlists/abc123/followers"
+        );
+    }
+
+    #[test]
+    fn user_playlist_endpoints() {
+        assert_eq!(
+            Endpoint::CurrentUserPlaylists { limit: 20, offset: 40 }.path(),
+            "/me/playlists?limit=20&offset=40"
+        );
+        assert_eq!(
+            Endpoint::UserPlaylists { user_id: "user123" }.path(),
+            "/users/user123/playlists"
+        );
+    }
+
+    #[test]
+    fn browse_endpoints() {
+        assert_eq!(
+            Endpoint::FeaturedPlaylists { limit: 20, offset: 0 }.path(),
+            "/browse/featured-playlists?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::CategoryPlaylists { category_id: "pop", limit: 20, offset: 0 }.path(),
+            "/browse/categories/pop/playlists?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::NewReleases { limit: 20, offset: 0 }.path(),
+            "/browse/new-releases?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::Category { id: "rock" }.path(),
+            "/browse/categories/rock"
+        );
+        assert_eq!(
+            Endpoint::Categories { limit: 50, offset: 0 }.path(),
+            "/browse/categories?limit=50&offset=0"
+        );
+    }
+
+    #[test]
+    fn saved_tracks_endpoints() {
+        assert_eq!(
+            Endpoint::SavedTracks { limit: 20, offset: 0 }.path(),
+            "/me/tracks?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::SavedTracksIds { ids: "id1,id2" }.path(),
+            "/me/tracks?ids=id1,id2"
+        );
+        assert_eq!(
+            Endpoint::SavedTracksContains { ids: "id1" }.path(),
+            "/me/tracks/contains?ids=id1"
+        );
+    }
+
+    #[test]
+    fn saved_albums_endpoints() {
+        assert_eq!(
+            Endpoint::SavedAlbums { limit: 20, offset: 0 }.path(),
+            "/me/albums?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::SavedAlbumsIds { ids: "id1,id2" }.path(),
+            "/me/albums?ids=id1,id2"
+        );
+        assert_eq!(
+            Endpoint::SavedAlbumsContains { ids: "id1" }.path(),
+            "/me/albums/contains?ids=id1"
+        );
+    }
+
+    #[test]
+    fn track_endpoints() {
+        assert_eq!(Endpoint::Track { id: "track123" }.path(), "/tracks/track123");
+        assert_eq!(Endpoint::Tracks { ids: "t1,t2,t3" }.path(), "/tracks?ids=t1,t2,t3");
+    }
+
+    #[test]
+    fn album_endpoints() {
+        assert_eq!(Endpoint::Album { id: "album123" }.path(), "/albums/album123");
+        assert_eq!(Endpoint::Albums { ids: "a1,a2" }.path(), "/albums?ids=a1,a2");
+        assert_eq!(
+            Endpoint::AlbumTracks { id: "album123", limit: 50, offset: 0 }.path(),
+            "/albums/album123/tracks?limit=50&offset=0"
+        );
+    }
+
+    #[test]
+    fn artist_endpoints() {
+        assert_eq!(Endpoint::Artist { id: "artist123" }.path(), "/artists/artist123");
+        assert_eq!(Endpoint::Artists { ids: "a1,a2" }.path(), "/artists?ids=a1,a2");
+        assert_eq!(
+            Endpoint::ArtistTopTracks { id: "artist123", market: "US" }.path(),
+            "/artists/artist123/top-tracks?market=US"
+        );
+        assert_eq!(
+            Endpoint::ArtistAlbums { id: "artist123", limit: 20, offset: 0 }.path(),
+            "/artists/artist123/albums?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::ArtistRelatedArtists { id: "artist123" }.path(),
+            "/artists/artist123/related-artists"
+        );
+    }
+
+    #[test]
+    fn user_endpoints() {
+        assert_eq!(Endpoint::CurrentUser.path(), "/me");
+        assert_eq!(
+            Endpoint::UserProfile { user_id: "user123" }.path(),
+            "/users/user123"
+        );
+        assert_eq!(
+            Endpoint::UserTopItems { item_type: "tracks", time_range: "medium_term", limit: 20, offset: 0 }.path(),
+            "/me/top/tracks?time_range=medium_term&limit=20&offset=0"
+        );
+    }
+
+    #[test]
+    fn follow_endpoints() {
+        assert_eq!(
+            Endpoint::FollowedArtists { limit: 20 }.path(),
+            "/me/following?type=artist&limit=20"
+        );
+        assert_eq!(
+            Endpoint::FollowArtistsOrUsers { entity_type: "artist", ids: "id1,id2" }.path(),
+            "/me/following?type=artist&ids=id1,id2"
+        );
+        assert_eq!(
+            Endpoint::FollowingContains { entity_type: "artist", ids: "id1" }.path(),
+            "/me/following/contains?type=artist&ids=id1"
+        );
+        assert_eq!(
+            Endpoint::FollowPlaylist { playlist_id: "pl123" }.path(),
+            "/playlists/pl123/followers"
+        );
+        assert_eq!(
+            Endpoint::FollowPlaylistContains { playlist_id: "pl123", ids: "user1" }.path(),
+            "/playlists/pl123/followers/contains?ids=user1"
+        );
+    }
+
+    #[test]
+    fn markets_endpoint() {
+        assert_eq!(Endpoint::Markets.path(), "/markets");
+    }
+
+    #[test]
+    fn search_encodes_query() {
+        let path = Endpoint::Search { query: "hello world", types: "track", limit: 20 }.path();
+        assert!(path.contains("hello%20world") || path.contains("hello+world"));
+        assert!(path.contains("type=track"));
+        assert!(path.contains("limit=20"));
+    }
+
+    #[test]
+    fn show_endpoints() {
+        assert_eq!(Endpoint::Show { id: "show123" }.path(), "/shows/show123");
+        assert_eq!(Endpoint::Shows { ids: "s1,s2" }.path(), "/shows?ids=s1,s2");
+        assert_eq!(
+            Endpoint::ShowEpisodes { id: "show123", limit: 20, offset: 0 }.path(),
+            "/shows/show123/episodes?limit=20&offset=0"
+        );
+        assert_eq!(
+            Endpoint::SavedShows { limit: 20, offset: 0 }.path(),
+            "/me/shows?limit=20&offset=0"
+        );
+    }
+
+    #[test]
+    fn episode_endpoints() {
+        assert_eq!(Endpoint::Episode { id: "ep123" }.path(), "/episodes/ep123");
+        assert_eq!(Endpoint::Episodes { ids: "e1,e2" }.path(), "/episodes?ids=e1,e2");
+        assert_eq!(
+            Endpoint::SavedEpisodes { limit: 20, offset: 0 }.path(),
+            "/me/episodes?limit=20&offset=0"
+        );
+    }
+
+    #[test]
+    fn audiobook_endpoints() {
+        assert_eq!(Endpoint::Audiobook { id: "ab123" }.path(), "/audiobooks/ab123");
+        assert_eq!(Endpoint::Audiobooks { ids: "ab1,ab2" }.path(), "/audiobooks?ids=ab1,ab2");
+        assert_eq!(
+            Endpoint::AudiobookChapters { id: "ab123", limit: 50, offset: 0 }.path(),
+            "/audiobooks/ab123/chapters?limit=50&offset=0"
+        );
+        assert_eq!(
+            Endpoint::SavedAudiobooks { limit: 20, offset: 0 }.path(),
+            "/me/audiobooks?limit=20&offset=0"
+        );
+    }
+
+    #[test]
+    fn chapter_endpoints() {
+        assert_eq!(Endpoint::Chapter { id: "ch123" }.path(), "/chapters/ch123");
+        assert_eq!(Endpoint::Chapters { ids: "c1,c2" }.path(), "/chapters?ids=c1,c2");
+    }
+}

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
-const APP_DIR: &str = "spotify-cli";
+use crate::constants::{APP_DIR_NAME, CONFIG_FILENAME, TOKEN_FILENAME};
 
 #[derive(Debug, Error)]
 pub enum PathError {
@@ -13,7 +13,7 @@ pub fn config_dir() -> Result<PathBuf, PathError> {
     #[cfg(target_os = "windows")]
     {
         dirs::config_dir()
-            .map(|p| p.join(APP_DIR))
+            .map(|p| p.join(APP_DIR_NAME))
             .ok_or(PathError::NoHomeDir)
     }
 
@@ -21,17 +21,17 @@ pub fn config_dir() -> Result<PathBuf, PathError> {
     {
         // Use XDG (~/.config) for both Linux and macOS
         dirs::home_dir()
-            .map(|p| p.join(".config").join(APP_DIR))
+            .map(|p| p.join(".config").join(APP_DIR_NAME))
             .ok_or(PathError::NoHomeDir)
     }
 }
 
 pub fn config_file() -> Result<PathBuf, PathError> {
-    config_dir().map(|p| p.join("config.toml"))
+    config_dir().map(|p| p.join(CONFIG_FILENAME))
 }
 
 pub fn token_file() -> Result<PathBuf, PathError> {
-    config_dir().map(|p| p.join("token.json"))
+    config_dir().map(|p| p.join(TOKEN_FILENAME))
 }
 
 #[cfg(test)]
@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn config_dir_ends_with_app_name() {
         let dir = config_dir().unwrap();
-        assert!(dir.ends_with(APP_DIR));
+        assert!(dir.ends_with(APP_DIR_NAME));
     }
 
     #[test]
