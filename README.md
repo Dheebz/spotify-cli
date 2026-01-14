@@ -17,9 +17,14 @@ A command-line interface for Spotify, built in Rust. Control playback, manage pl
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/spotify-cli.git
+git clone https://github.com/dheebz/spotify-cli.git
 cd spotify-cli
 cargo build --release
+```
+
+### From Crates.io
+```bash
+cargo install spotify-cli
 ```
 
 The binary will be at `target/release/spotify-cli`.
@@ -28,7 +33,7 @@ The binary will be at `target/release/spotify-cli`.
 
 - Rust 2024 edition (rustc 1.85+)
 - A Spotify account (Premium required for playback control)
-- A Spotify Developer App (for OAuth credentials)
+- A Spotify Developer App (for OAuth credentials
 
 ## Quick Start
 

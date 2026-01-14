@@ -68,3 +68,92 @@ pub fn format_episodes(items: &[Value], message: &str) {
     print_table("Episodes", &["#", "Name", "Show", "Duration"], &rows, &[3, 30, 20, 10]);
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_episode_detail_full() {
+        let payload = json!({
+            "name": "Episode Title",
+            "show": { "name": "Podcast Name" },
+            "description": "A detailed description of this episode",
+            "duration_ms": 3600000,
+            "release_date": "2024-01-15",
+            "explicit": true,
+            "uri": "spotify:episode:abc123"
+        });
+        format_episode_detail(&payload);
+    }
+
+    #[test]
+    fn format_episode_detail_minimal() {
+        let payload = json!({});
+        format_episode_detail(&payload);
+    }
+
+    #[test]
+    fn format_episode_detail_long_description() {
+        let long_desc = "A".repeat(300);
+        let payload = json!({
+            "name": "Episode",
+            "show": { "name": "Show" },
+            "description": long_desc,
+            "duration_ms": 1800000
+        });
+        format_episode_detail(&payload);
+    }
+
+    #[test]
+    fn format_episode_detail_not_explicit() {
+        let payload = json!({
+            "name": "Family Episode",
+            "show": { "name": "Family Show" },
+            "explicit": false,
+            "duration_ms": 900000
+        });
+        format_episode_detail(&payload);
+    }
+
+    #[test]
+    fn format_episodes_with_items() {
+        let items = vec![
+            json!({
+                "name": "Episode One",
+                "show": { "name": "Podcast A" },
+                "duration_ms": 3600000
+            }),
+            json!({
+                "name": "Episode Two",
+                "show": { "name": "Podcast B" },
+                "duration_ms": 1800000
+            }),
+        ];
+        format_episodes(&items, "Recent Episodes");
+    }
+
+    #[test]
+    fn format_episodes_empty() {
+        let items: Vec<Value> = vec![];
+        format_episodes(&items, "No Episodes");
+    }
+
+    #[test]
+    fn format_episodes_wrapped() {
+        let items = vec![json!({
+            "episode": {
+                "name": "Wrapped Episode",
+                "show": { "name": "Show" },
+                "duration_ms": 2700000
+            }
+        })];
+        format_episodes(&items, "Saved Episodes");
+    }
+
+    #[test]
+    fn format_episodes_minimal() {
+        let items = vec![json!({})];
+        format_episodes(&items, "Episodes");
+    }
+}

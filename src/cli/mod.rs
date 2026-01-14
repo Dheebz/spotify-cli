@@ -175,3 +175,285 @@ pub enum Command {
         shell: Shell,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_auth_login() {
+        let cli = Cli::try_parse_from(["spotify-cli", "auth", "login"]).unwrap();
+        match cli.command {
+            Command::Auth { command: AuthCommand::Login { force } } => {
+                assert!(!force);
+            }
+            _ => panic!("Expected Auth Login command"),
+        }
+    }
+
+    #[test]
+    fn parse_auth_login_force() {
+        let cli = Cli::try_parse_from(["spotify-cli", "auth", "login", "-f"]).unwrap();
+        match cli.command {
+            Command::Auth { command: AuthCommand::Login { force } } => {
+                assert!(force);
+            }
+            _ => panic!("Expected Auth Login command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_next() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "next"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Next } => {}
+            _ => panic!("Expected Player Next command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_alias_p() {
+        let cli = Cli::try_parse_from(["spotify-cli", "p", "next"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Next } => {}
+            _ => panic!("Expected Player Next command via alias"),
+        }
+    }
+
+    #[test]
+    fn parse_player_volume() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "volume", "50"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Volume { percent } } => {
+                assert_eq!(percent, 50);
+            }
+            _ => panic!("Expected Player Volume command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_volume_max() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "volume", "100"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Volume { percent } } => {
+                assert_eq!(percent, 100);
+            }
+            _ => panic!("Expected Player Volume command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_volume_invalid() {
+        let result = Cli::try_parse_from(["spotify-cli", "player", "volume", "101"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_search_default() {
+        let cli = Cli::try_parse_from(["spotify-cli", "search", "test query"]).unwrap();
+        match cli.command {
+            Command::Search { query, limit, pins_only, exact, .. } => {
+                assert_eq!(query, "test query");
+                assert_eq!(limit, 20);
+                assert!(!pins_only);
+                assert!(!exact);
+            }
+            _ => panic!("Expected Search command"),
+        }
+    }
+
+    #[test]
+    fn parse_search_with_options() {
+        let cli = Cli::try_parse_from([
+            "spotify-cli", "search", "query",
+            "--type", "track",
+            "--limit", "10",
+            "--pins-only",
+            "--exact",
+        ]).unwrap();
+        match cli.command {
+            Command::Search { query, types, limit, pins_only, exact, .. } => {
+                assert_eq!(query, "query");
+                assert_eq!(types, vec!["track"]);
+                assert_eq!(limit, 10);
+                assert!(pins_only);
+                assert!(exact);
+            }
+            _ => panic!("Expected Search command"),
+        }
+    }
+
+    #[test]
+    fn parse_search_alias_s() {
+        let cli = Cli::try_parse_from(["spotify-cli", "s", "query"]).unwrap();
+        match cli.command {
+            Command::Search { query, .. } => {
+                assert_eq!(query, "query");
+            }
+            _ => panic!("Expected Search command via alias"),
+        }
+    }
+
+    #[test]
+    fn parse_json_flag() {
+        let cli = Cli::try_parse_from(["spotify-cli", "-j", "markets"]).unwrap();
+        assert!(cli.json);
+    }
+
+    #[test]
+    fn parse_verbose_flag() {
+        let cli = Cli::try_parse_from(["spotify-cli", "-v", "markets"]).unwrap();
+        assert_eq!(cli.verbose, 1);
+    }
+
+    #[test]
+    fn parse_verbose_multiple() {
+        let cli = Cli::try_parse_from(["spotify-cli", "-vvv", "markets"]).unwrap();
+        assert_eq!(cli.verbose, 3);
+    }
+
+    #[test]
+    fn parse_log_format() {
+        let cli = Cli::try_parse_from(["spotify-cli", "--log-format", "json", "markets"]).unwrap();
+        assert_eq!(cli.log_format, "json");
+    }
+
+    #[test]
+    fn parse_pin_add() {
+        let cli = Cli::try_parse_from([
+            "spotify-cli", "pin", "add", "track", "spotify:track:123", "my alias"
+        ]).unwrap();
+        match cli.command {
+            Command::Pin { command: PinCommand::Add { resource_type, url_or_id, alias, tags } } => {
+                assert_eq!(resource_type, "track");
+                assert_eq!(url_or_id, "spotify:track:123");
+                assert_eq!(alias, "my alias");
+                assert!(tags.is_none());
+            }
+            _ => panic!("Expected Pin Add command"),
+        }
+    }
+
+    #[test]
+    fn parse_pin_add_with_tags() {
+        let cli = Cli::try_parse_from([
+            "spotify-cli", "pin", "add", "playlist", "123", "alias", "-t", "tag1,tag2"
+        ]).unwrap();
+        match cli.command {
+            Command::Pin { command: PinCommand::Add { tags, .. } } => {
+                assert_eq!(tags, Some("tag1,tag2".to_string()));
+            }
+            _ => panic!("Expected Pin Add command"),
+        }
+    }
+
+    #[test]
+    fn parse_playlist_list() {
+        let cli = Cli::try_parse_from(["spotify-cli", "playlist", "list"]).unwrap();
+        match cli.command {
+            Command::Playlist { command: PlaylistCommand::List { limit, offset } } => {
+                assert_eq!(limit, 20);
+                assert_eq!(offset, 0);
+            }
+            _ => panic!("Expected Playlist List command"),
+        }
+    }
+
+    #[test]
+    fn parse_library_alias() {
+        let cli = Cli::try_parse_from(["spotify-cli", "lib", "list"]).unwrap();
+        match cli.command {
+            Command::Library { command: LibraryCommand::List { .. } } => {}
+            _ => panic!("Expected Library List command via alias"),
+        }
+    }
+
+    #[test]
+    fn parse_info_alias() {
+        let cli = Cli::try_parse_from(["spotify-cli", "i", "track"]).unwrap();
+        match cli.command {
+            Command::Info { command: InfoCommand::Track { .. } } => {}
+            _ => panic!("Expected Info Track command via alias"),
+        }
+    }
+
+    #[test]
+    fn parse_markets() {
+        let cli = Cli::try_parse_from(["spotify-cli", "markets"]).unwrap();
+        match cli.command {
+            Command::Markets => {}
+            _ => panic!("Expected Markets command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_repeat() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "repeat", "track"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Repeat { mode } } => {
+                assert_eq!(mode, "track");
+            }
+            _ => panic!("Expected Player Repeat command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_shuffle() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "shuffle", "on"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Shuffle { state } } => {
+                assert_eq!(state, "on");
+            }
+            _ => panic!("Expected Player Shuffle command"),
+        }
+    }
+
+    #[test]
+    fn parse_player_seek() {
+        let cli = Cli::try_parse_from(["spotify-cli", "player", "seek", "1:30"]).unwrap();
+        match cli.command {
+            Command::Player { command: PlayerCommand::Seek { position } } => {
+                assert_eq!(position, "1:30");
+            }
+            _ => panic!("Expected Player Seek command"),
+        }
+    }
+
+    #[test]
+    fn parse_user_top() {
+        let cli = Cli::try_parse_from(["spotify-cli", "user", "top", "tracks", "-r", "short"]).unwrap();
+        match cli.command {
+            Command::User { command: UserCommand::Top { item_type, range, limit } } => {
+                assert_eq!(item_type, "tracks");
+                assert_eq!(range, "short");
+                assert_eq!(limit, 20);
+            }
+            _ => panic!("Expected User Top command"),
+        }
+    }
+
+    #[test]
+    fn parse_user_top_default_range() {
+        let cli = Cli::try_parse_from(["spotify-cli", "user", "top", "artists"]).unwrap();
+        match cli.command {
+            Command::User { command: UserCommand::Top { item_type, range, limit } } => {
+                assert_eq!(item_type, "artists");
+                assert_eq!(range, "medium");
+                assert_eq!(limit, 20);
+            }
+            _ => panic!("Expected User Top command"),
+        }
+    }
+
+    #[test]
+    fn parse_follow_artist() {
+        let cli = Cli::try_parse_from(["spotify-cli", "follow", "artist", "123"]).unwrap();
+        match cli.command {
+            Command::Follow { command: FollowCommand::Artist { ids, dry_run } } => {
+                assert_eq!(ids, vec!["123"]);
+                assert!(!dry_run);
+            }
+            _ => panic!("Expected Follow Artist command"),
+        }
+    }
+}

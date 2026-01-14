@@ -35,3 +35,58 @@ pub fn format_user_profile(payload: &Value) {
         println!("  URI: {}", uri);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_user_profile_full() {
+        let payload = json!({
+            "display_name": "Test User",
+            "email": "test@example.com",
+            "country": "US",
+            "product": "premium",
+            "followers": { "total": 1500 },
+            "uri": "spotify:user:testuser"
+        });
+        format_user_profile(&payload);
+    }
+
+    #[test]
+    fn format_user_profile_minimal() {
+        let payload = json!({});
+        format_user_profile(&payload);
+    }
+
+    #[test]
+    fn format_user_profile_without_email() {
+        let payload = json!({
+            "display_name": "Test User",
+            "country": "GB",
+            "product": "free",
+            "followers": { "total": 0 }
+        });
+        format_user_profile(&payload);
+    }
+
+    #[test]
+    fn format_user_profile_without_country() {
+        let payload = json!({
+            "display_name": "Test User",
+            "email": "test@example.com",
+            "product": "premium"
+        });
+        format_user_profile(&payload);
+    }
+
+    #[test]
+    fn format_user_profile_large_followers() {
+        let payload = json!({
+            "display_name": "Popular Artist",
+            "followers": { "total": 5000000 }
+        });
+        format_user_profile(&payload);
+    }
+}

@@ -99,3 +99,64 @@ impl Default for SpotifyAuth {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auth_error_display() {
+        let err = AuthError::TokenExchange {
+            status: 400,
+            message: "invalid_grant".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("400"));
+        assert!(display.contains("invalid_grant"));
+    }
+
+    #[test]
+    fn auth_error_token_exchange_status() {
+        let err = AuthError::TokenExchange {
+            status: 401,
+            message: "unauthorized".to_string(),
+        };
+        match err {
+            AuthError::TokenExchange { status, message } => {
+                assert_eq!(status, 401);
+                assert_eq!(message, "unauthorized");
+            }
+            _ => panic!("Wrong error type"),
+        }
+    }
+
+    #[test]
+    fn spotify_auth_url_building() {
+        let url = SpotifyAuth::url("/api/token");
+        assert!(url.contains("/api/token"));
+        assert!(url.starts_with("https://"));
+    }
+
+    #[test]
+    fn spotify_auth_default() {
+        let _auth = SpotifyAuth::default();
+        // Just verify it creates successfully
+    }
+
+    #[test]
+    fn spotify_auth_new() {
+        let _auth = SpotifyAuth::new();
+        // Just verify it creates successfully
+    }
+
+    #[test]
+    fn auth_error_debug() {
+        let err = AuthError::TokenExchange {
+            status: 500,
+            message: "server error".to_string(),
+        };
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("TokenExchange"));
+        assert!(debug.contains("500"));
+    }
+}

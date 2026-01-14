@@ -161,4 +161,68 @@ mod tests {
         assert_eq!(config.verbosity, 0);
         assert_eq!(config.format, LogFormat::Pretty);
     }
+
+    #[test]
+    fn log_format_default_is_pretty() {
+        assert_eq!(LogFormat::default(), LogFormat::Pretty);
+    }
+
+    #[test]
+    fn log_format_from_str_error_message() {
+        let result = "invalid".parse::<LogFormat>();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("invalid"));
+        assert!(err.contains("pretty"));
+        assert!(err.contains("json"));
+    }
+
+    #[test]
+    fn log_config_new_sets_verbosity() {
+        assert_eq!(LogConfig::new(0).verbosity, 0);
+        assert_eq!(LogConfig::new(1).verbosity, 1);
+        assert_eq!(LogConfig::new(3).verbosity, 3);
+    }
+
+    #[test]
+    fn log_config_format_method_is_chainable() {
+        let config = LogConfig::new(1)
+            .format(LogFormat::Json);
+        assert_eq!(config.format, LogFormat::Json);
+    }
+
+    #[test]
+    fn log_config_clone() {
+        let config = LogConfig::new(2).format(LogFormat::Json);
+        let cloned = config.clone();
+        assert_eq!(cloned.verbosity, 2);
+        assert_eq!(cloned.format, LogFormat::Json);
+    }
+
+    #[test]
+    fn log_format_copy() {
+        let format = LogFormat::Json;
+        let copied = format;
+        assert_eq!(copied, LogFormat::Json);
+    }
+
+    #[test]
+    fn log_format_eq() {
+        assert_eq!(LogFormat::Pretty, LogFormat::Pretty);
+        assert_eq!(LogFormat::Json, LogFormat::Json);
+        assert_ne!(LogFormat::Pretty, LogFormat::Json);
+    }
+
+    #[test]
+    fn log_format_debug() {
+        assert!(!format!("{:?}", LogFormat::Pretty).is_empty());
+        assert!(!format!("{:?}", LogFormat::Json).is_empty());
+    }
+
+    #[test]
+    fn log_config_debug() {
+        let config = LogConfig::default();
+        let debug = format!("{:?}", config);
+        assert!(debug.contains("LogConfig"));
+    }
 }

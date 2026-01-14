@@ -29,3 +29,60 @@ pub fn format_pins(pins: &[Value]) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_pins_empty() {
+        let pins: Vec<Value> = vec![];
+        format_pins(&pins);
+    }
+
+    #[test]
+    fn format_pins_single_without_tags() {
+        let pins = vec![json!({
+            "alias": "favorite",
+            "type": "track"
+        })];
+        format_pins(&pins);
+    }
+
+    #[test]
+    fn format_pins_single_with_tags() {
+        let pins = vec![json!({
+            "alias": "workout mix",
+            "type": "playlist",
+            "tags": ["gym", "energy", "rock"]
+        })];
+        format_pins(&pins);
+    }
+
+    #[test]
+    fn format_pins_multiple() {
+        let pins = vec![
+            json!({ "alias": "chill", "type": "playlist", "tags": ["relax"] }),
+            json!({ "alias": "best song", "type": "track" }),
+            json!({ "alias": "fav artist", "type": "artist", "tags": ["rock", "metal"] }),
+        ];
+        format_pins(&pins);
+    }
+
+    #[test]
+    fn format_pins_minimal_data() {
+        let pins = vec![json!({})];
+        format_pins(&pins);
+    }
+
+    #[test]
+    fn format_pins_empty_tags_array() {
+        let pins = vec![json!({
+            "alias": "test",
+            "type": "album",
+            "tags": []
+        })];
+        format_pins(&pins);
+    }
+}

@@ -182,3 +182,120 @@ fn open_browser(url: &str) -> Result<(), OAuthError> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn oauth_flow_new_creates_with_defaults() {
+        let flow = OAuthFlow::new("test_client_id".to_string());
+        assert_eq!(flow.client_id, "test_client_id");
+        assert_eq!(flow.port, DEFAULT_PORT);
+        assert!(flow.redirect_uri.contains("127.0.0.1"));
+        assert!(flow.redirect_uri.contains("/callback"));
+    }
+
+    #[test]
+    fn oauth_flow_with_scopes() {
+        let flow = OAuthFlow::new("client".to_string())
+            .with_scopes(vec!["scope1".to_string(), "scope2".to_string()]);
+        assert_eq!(flow.scopes.len(), 2);
+        assert!(flow.scopes.contains(&"scope1".to_string()));
+        assert!(flow.scopes.contains(&"scope2".to_string()));
+    }
+
+    #[test]
+    fn oauth_flow_with_port() {
+        let flow = OAuthFlow::new("client".to_string()).with_port(9999);
+        assert_eq!(flow.port, 9999);
+        assert!(flow.redirect_uri.contains("9999"));
+    }
+
+    #[test]
+    fn oauth_flow_port_updates_redirect_uri() {
+        let flow = OAuthFlow::new("client".to_string()).with_port(3000);
+        assert_eq!(flow.redirect_uri, "http://127.0.0.1:3000/callback");
+    }
+
+    #[test]
+    fn default_scopes_contains_required_scopes() {
+        let scopes = default_scopes();
+        assert!(scopes.contains(&"user-read-playback-state".to_string()));
+        assert!(scopes.contains(&"user-modify-playback-state".to_string()));
+        assert!(scopes.contains(&"user-library-read".to_string()));
+        assert!(scopes.contains(&"user-library-modify".to_string()));
+        assert!(scopes.contains(&"playlist-read-private".to_string()));
+        assert!(scopes.contains(&"user-read-private".to_string()));
+    }
+
+    #[test]
+    fn default_scopes_count() {
+        let scopes = default_scopes();
+        assert_eq!(scopes.len(), 15);
+    }
+
+    #[test]
+    fn oauth_error_display_callback() {
+        let err = OAuthError::Callback(CallbackError::Timeout);
+        let display = format!("{}", err);
+        assert!(display.contains("Callback"));
+    }
+
+    #[test]
+    fn oauth_error_display_browser() {
+        let err = OAuthError::Browser("failed to open".to_string());
+        let display = format!("{}", err);
+        assert!(display.contains("browser"));
+        assert!(display.contains("failed to open"));
+    }
+
+    #[test]
+    fn oauth_error_display_token_parse() {
+        let err = OAuthError::TokenParse;
+        let display = format!("{}", err);
+        assert!(display.contains("token"));
+    }
+
+    #[test]
+    fn oauth_error_from_callback_error() {
+        let callback_err = CallbackError::Timeout;
+        let oauth_err: OAuthError = callback_err.into();
+        match oauth_err {
+            OAuthError::Callback(_) => {}
+            _ => panic!("Expected Callback variant"),
+        }
+    }
+
+    #[test]
+    fn build_auth_url_contains_required_params() {
+        let flow = OAuthFlow::new("test_client".to_string());
+        let pkce = PkceChallenge::generate();
+        let url = flow.build_auth_url(&pkce);
+
+        assert!(url.contains("client_id=test_client"));
+        assert!(url.contains("response_type=code"));
+        assert!(url.contains("code_challenge_method=S256"));
+        assert!(url.contains("redirect_uri="));
+        assert!(url.contains("scope="));
+    }
+
+    #[test]
+    fn build_auth_url_includes_pkce_challenge() {
+        let flow = OAuthFlow::new("client".to_string());
+        let pkce = PkceChallenge::generate();
+        let url = flow.build_auth_url(&pkce);
+
+        assert!(url.contains(&pkce.challenge));
+    }
+
+    #[test]
+    fn oauth_flow_chaining_works() {
+        let flow = OAuthFlow::new("client".to_string())
+            .with_port(5000)
+            .with_scopes(vec!["scope1".to_string()]);
+
+        assert_eq!(flow.port, 5000);
+        assert_eq!(flow.scopes.len(), 1);
+    }
+}

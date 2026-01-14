@@ -30,3 +30,66 @@ pub fn format_category_detail(payload: &Value) {
                 println!("  Icon: {}", url);
             }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_categories_with_items() {
+        let items = vec![
+            json!({ "name": "Pop", "id": "pop" }),
+            json!({ "name": "Rock", "id": "rock" }),
+            json!({ "name": "Hip-Hop", "id": "hiphop" }),
+        ];
+        format_categories(&items);
+    }
+
+    #[test]
+    fn format_categories_empty() {
+        let items: Vec<Value> = vec![];
+        format_categories(&items);
+    }
+
+    #[test]
+    fn format_categories_minimal() {
+        let items = vec![json!({})];
+        format_categories(&items);
+    }
+
+    #[test]
+    fn format_category_detail_full() {
+        let payload = json!({
+            "name": "Top Lists",
+            "id": "toplists",
+            "icons": [{ "url": "https://example.com/icon.png" }]
+        });
+        format_category_detail(&payload);
+    }
+
+    #[test]
+    fn format_category_detail_minimal() {
+        let payload = json!({});
+        format_category_detail(&payload);
+    }
+
+    #[test]
+    fn format_category_detail_no_icons() {
+        let payload = json!({
+            "name": "Mood",
+            "id": "mood"
+        });
+        format_category_detail(&payload);
+    }
+
+    #[test]
+    fn format_category_detail_empty_icons() {
+        let payload = json!({
+            "name": "Focus",
+            "id": "focus",
+            "icons": []
+        });
+        format_category_detail(&payload);
+    }
+}

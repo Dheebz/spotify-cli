@@ -67,3 +67,96 @@ pub fn format_playlist_detail(payload: &Value) {
             }
         }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_playlists_with_items() {
+        let items = vec![
+            json!({
+                "name": "My Playlist",
+                "tracks": { "total": 50 },
+                "owner": { "display_name": "user123" }
+            }),
+            json!({
+                "name": "Another Playlist",
+                "tracks": { "total": 100 },
+                "owner": { "display_name": "user456" }
+            }),
+        ];
+        format_playlists(&items);
+    }
+
+    #[test]
+    fn format_playlists_empty() {
+        let items: Vec<Value> = vec![];
+        format_playlists(&items);
+    }
+
+    #[test]
+    fn format_playlists_minimal_data() {
+        let items = vec![json!({})];
+        format_playlists(&items);
+    }
+
+    #[test]
+    fn format_playlist_detail_full() {
+        let payload = json!({
+            "name": "Test Playlist",
+            "owner": { "display_name": "Test User" },
+            "description": "A great playlist for testing",
+            "tracks": {
+                "total": 25,
+                "items": [
+                    { "track": { "name": "Track 1", "artists": [{ "name": "Artist 1" }] } },
+                    { "track": { "name": "Track 2", "artists": [{ "name": "Artist 2" }] } }
+                ]
+            },
+            "followers": { "total": 5000 }
+        });
+        format_playlist_detail(&payload);
+    }
+
+    #[test]
+    fn format_playlist_detail_minimal() {
+        let payload = json!({});
+        format_playlist_detail(&payload);
+    }
+
+    #[test]
+    fn format_playlist_detail_empty_description() {
+        let payload = json!({
+            "name": "Playlist",
+            "description": "",
+            "owner": { "display_name": "User" }
+        });
+        format_playlist_detail(&payload);
+    }
+
+    #[test]
+    fn format_playlist_detail_many_tracks() {
+        let tracks: Vec<Value> = (0..15)
+            .map(|i| json!({ "track": { "name": format!("Track {}", i), "artists": [{ "name": "Artist" }] } }))
+            .collect();
+        let payload = json!({
+            "name": "Big Playlist",
+            "owner": { "display_name": "User" },
+            "tracks": { "total": 100, "items": tracks },
+            "followers": { "total": 1000000 }
+        });
+        format_playlist_detail(&payload);
+    }
+
+    #[test]
+    fn format_playlist_detail_no_tracks() {
+        let payload = json!({
+            "name": "Empty Playlist",
+            "owner": { "display_name": "User" },
+            "tracks": { "total": 0, "items": [] }
+        });
+        format_playlist_detail(&payload);
+    }
+}

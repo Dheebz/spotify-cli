@@ -210,4 +210,106 @@ mod tests {
         let server = CallbackServer::new(9999);
         assert_eq!(server.redirect_uri(), "http://127.0.0.1:9999/callback");
     }
+
+    #[test]
+    fn with_timeout_sets_custom_timeout() {
+        let server = CallbackServer::new(8888).with_timeout(Duration::from_secs(60));
+        assert_eq!(server.timeout, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn default_timeout_is_five_minutes() {
+        let server = CallbackServer::new(8888);
+        assert_eq!(server.timeout, Duration::from_secs(OAUTH_CALLBACK_TIMEOUT_SECS));
+    }
+
+    #[test]
+    fn callback_error_display_server_start() {
+        let err = CallbackError::ServerStart("port in use".to_string());
+        let display = format!("{}", err);
+        assert!(display.contains("server"));
+        assert!(display.contains("port in use"));
+    }
+
+    #[test]
+    fn callback_error_display_timeout() {
+        let err = CallbackError::Timeout;
+        let display = format!("{}", err);
+        assert!(display.contains("Timeout"));
+    }
+
+    #[test]
+    fn callback_error_display_missing_code() {
+        let err = CallbackError::MissingCode;
+        let display = format!("{}", err);
+        assert!(display.contains("authorization code"));
+    }
+
+    #[test]
+    fn callback_error_display_denied() {
+        let err = CallbackError::Denied("access_denied".to_string());
+        let display = format!("{}", err);
+        assert!(display.contains("denied"));
+        assert!(display.contains("access_denied"));
+    }
+
+    #[test]
+    fn callback_error_display_invalid_request() {
+        let err = CallbackError::InvalidRequest;
+        let display = format!("{}", err);
+        assert!(display.contains("Invalid"));
+    }
+
+    #[test]
+    fn success_html_contains_authenticated() {
+        let html = success_html();
+        assert!(html.contains("Authenticated"));
+        assert!(html.contains("html"));
+        assert!(html.contains("spotify-cli"));
+    }
+
+    #[test]
+    fn error_html_contains_message() {
+        let html = error_html("Test error message");
+        assert!(html.contains("Test error message"));
+        assert!(html.contains("Authentication Failed"));
+        assert!(html.contains("html"));
+    }
+
+    #[test]
+    fn callback_result_stores_code_and_state() {
+        let result = CallbackResult {
+            code: "test_code".to_string(),
+            state: Some("test_state".to_string()),
+        };
+        assert_eq!(result.code, "test_code");
+        assert_eq!(result.state, Some("test_state".to_string()));
+    }
+
+    #[test]
+    fn callback_result_state_can_be_none() {
+        let result = CallbackResult {
+            code: "code".to_string(),
+            state: None,
+        };
+        assert!(result.state.is_none());
+    }
+
+    #[test]
+    fn default_port_constant() {
+        assert_eq!(DEFAULT_PORT, 8888);
+    }
+
+    #[test]
+    fn callback_path_constant() {
+        assert_eq!(CALLBACK_PATH, "/callback");
+    }
+
+    #[test]
+    fn chained_with_timeout() {
+        let server = CallbackServer::new(8080)
+            .with_timeout(Duration::from_secs(120));
+        assert_eq!(server.port, 8080);
+        assert_eq!(server.timeout, Duration::from_secs(120));
+    }
 }

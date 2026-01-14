@@ -278,4 +278,81 @@ mod tests {
         let category: CategoryPlaylists = serde_json::from_value(json).unwrap();
         assert!(category.playlists.items.is_empty());
     }
+
+    #[test]
+    fn playlist_image_url_returns_first() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123",
+            "images": [
+                {"url": "https://first.jpg", "height": 640, "width": 640},
+                {"url": "https://second.jpg", "height": 300, "width": 300}
+            ]
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.image_url(), Some("https://first.jpg"));
+    }
+
+    #[test]
+    fn playlist_image_url_none_when_empty() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123"
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert!(playlist.image_url().is_none());
+    }
+
+    #[test]
+    fn playlist_track_count_from_tracks() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123",
+            "tracks": {"href": "url", "items": [], "total": 42, "limit": 100, "offset": 0}
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.track_count(), 42);
+    }
+
+    #[test]
+    fn playlist_track_count_zero_without_tracks() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123"
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert_eq!(playlist.track_count(), 0);
+    }
+
+    #[test]
+    fn playlist_owner_name_none_without_owner() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123"
+        });
+        let playlist: Playlist = serde_json::from_value(json).unwrap();
+        assert!(playlist.owner_name().is_none());
+    }
+
+    #[test]
+    fn playlist_simplified_image_url_none_without_images() {
+        let json = json!({
+            "id": "p123",
+            "name": "Test",
+            "type": "playlist",
+            "uri": "spotify:playlist:p123"
+        });
+        let playlist: PlaylistSimplified = serde_json::from_value(json).unwrap();
+        assert!(playlist.image_url().is_none());
+    }
 }

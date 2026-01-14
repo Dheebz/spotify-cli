@@ -106,3 +106,113 @@ fn truncate_search_results(data: &mut Value) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn search_types_has_expected_types() {
+        assert!(SEARCH_TYPES.contains(&"track"));
+        assert!(SEARCH_TYPES.contains(&"artist"));
+        assert!(SEARCH_TYPES.contains(&"album"));
+        assert!(SEARCH_TYPES.contains(&"playlist"));
+        assert!(SEARCH_TYPES.contains(&"show"));
+        assert!(SEARCH_TYPES.contains(&"episode"));
+        assert!(SEARCH_TYPES.contains(&"audiobook"));
+    }
+
+    #[test]
+    fn search_types_count() {
+        assert_eq!(SEARCH_TYPES.len(), 7);
+    }
+
+    #[test]
+    fn search_result_keys_are_plural() {
+        for key in SEARCH_RESULT_KEYS {
+            assert!(key.ends_with('s'), "{} should be plural", key);
+        }
+    }
+
+    #[test]
+    fn search_result_keys_count() {
+        assert_eq!(SEARCH_RESULT_KEYS.len(), 7);
+    }
+
+    #[test]
+    fn truncate_search_results_works() {
+        let mut data = json!({
+            "tracks": {
+                "items": [
+                    {"name": "track1"},
+                    {"name": "track2"},
+                    {"name": "track3"}
+                ],
+                "limit": 3
+            },
+            "artists": {
+                "items": [
+                    {"name": "artist1"},
+                    {"name": "artist2"}
+                ],
+                "limit": 2
+            }
+        });
+
+        truncate_search_results(&mut data);
+
+        let tracks = data["tracks"]["items"].as_array().unwrap();
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(tracks[0]["name"], "track1");
+
+        let artists = data["artists"]["items"].as_array().unwrap();
+        assert_eq!(artists.len(), 1);
+        assert_eq!(artists[0]["name"], "artist1");
+
+        assert_eq!(data["tracks"]["limit"], 1);
+        assert_eq!(data["artists"]["limit"], 1);
+    }
+
+    #[test]
+    fn truncate_handles_missing_keys() {
+        let mut data = json!({
+            "unknown_key": {
+                "items": [1, 2, 3]
+            }
+        });
+
+        truncate_search_results(&mut data);
+
+        // Should not crash and unknown key should be unchanged
+        assert_eq!(data["unknown_key"]["items"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn truncate_handles_empty_items() {
+        let mut data = json!({
+            "tracks": {
+                "items": [],
+                "limit": 0
+            }
+        });
+
+        truncate_search_results(&mut data);
+
+        assert_eq!(data["tracks"]["items"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn truncate_handles_single_item() {
+        let mut data = json!({
+            "albums": {
+                "items": [{"name": "album1"}],
+                "limit": 1
+            }
+        });
+
+        truncate_search_results(&mut data);
+
+        assert_eq!(data["albums"]["items"].as_array().unwrap().len(), 1);
+    }
+}

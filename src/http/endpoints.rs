@@ -522,4 +522,60 @@ mod tests {
         assert_eq!(Endpoint::Chapter { id: "ch123" }.path(), "/chapters/ch123");
         assert_eq!(Endpoint::Chapters { ids: "c1,c2" }.path(), "/chapters?ids=c1,c2");
     }
+
+    #[test]
+    fn saved_shows_ids_endpoint() {
+        assert_eq!(
+            Endpoint::SavedShowsIds { ids: "show1,show2" }.path(),
+            "/me/shows?ids=show1,show2"
+        );
+    }
+
+    #[test]
+    fn saved_shows_contains_endpoint() {
+        assert_eq!(
+            Endpoint::SavedShowsContains { ids: "show1" }.path(),
+            "/me/shows/contains?ids=show1"
+        );
+    }
+
+    #[test]
+    fn saved_episodes_ids_endpoint() {
+        assert_eq!(
+            Endpoint::SavedEpisodesIds { ids: "ep1,ep2" }.path(),
+            "/me/episodes?ids=ep1,ep2"
+        );
+    }
+
+    #[test]
+    fn saved_episodes_contains_endpoint() {
+        assert_eq!(
+            Endpoint::SavedEpisodesContains { ids: "ep1" }.path(),
+            "/me/episodes/contains?ids=ep1"
+        );
+    }
+
+    #[test]
+    fn saved_audiobooks_ids_endpoint() {
+        assert_eq!(
+            Endpoint::SavedAudiobooksIds { ids: "ab1,ab2" }.path(),
+            "/me/audiobooks?ids=ab1,ab2"
+        );
+    }
+
+    #[test]
+    fn saved_audiobooks_contains_endpoint() {
+        assert_eq!(
+            Endpoint::SavedAudiobooksContains { ids: "ab1" }.path(),
+            "/me/audiobooks/contains?ids=ab1"
+        );
+    }
+
+    #[test]
+    fn playlist_cover_image_endpoint() {
+        assert_eq!(
+            Endpoint::PlaylistCoverImage { id: "pl123" }.path(),
+            "/playlists/pl123/images"
+        );
+    }
 }

@@ -52,3 +52,194 @@ pub fn extract_first_uri(pins: &[Value], spotify: &Value) -> Option<String> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn filter_ghost_entries_removes_invalid_entries() {
+        let mut data = json!({
+            "tracks": {
+                "items": [
+                    {"id": "valid", "name": "Track 1"},
+                    {"name": "Ghost Track"},
+                    {"id": null, "name": "Null ID Track"},
+                    {"id": "also_valid", "name": "Track 2"}
+                ]
+            }
+        });
+
+        filter_ghost_entries(&mut data);
+
+        let items = data["tracks"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["id"], "valid");
+        assert_eq!(items[1]["id"], "also_valid");
+    }
+
+    #[test]
+    fn filter_ghost_entries_preserves_valid_entries() {
+        let mut data = json!({
+            "artists": {
+                "items": [
+                    {"id": "a1", "name": "Artist 1"},
+                    {"id": "a2", "name": "Artist 2"}
+                ]
+            }
+        });
+
+        filter_ghost_entries(&mut data);
+
+        let items = data["artists"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn filter_ghost_entries_handles_empty_items() {
+        let mut data = json!({
+            "albums": {
+                "items": []
+            }
+        });
+
+        filter_ghost_entries(&mut data);
+
+        let items = data["albums"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 0);
+    }
+
+    #[test]
+    fn filter_ghost_entries_handles_missing_result_type() {
+        let mut data = json!({
+            "unknown": {
+                "items": [{"id": null}]
+            }
+        });
+
+        filter_ghost_entries(&mut data);
+
+        // Should not crash and unknown key should be unchanged
+        assert!(data.get("unknown").is_some());
+    }
+
+    #[test]
+    fn filter_exact_matches_filters_by_name() {
+        let mut data = json!({
+            "tracks": {
+                "items": [
+                    {"id": "t1", "name": "Hello World"},
+                    {"id": "t2", "name": "Goodbye"},
+                    {"id": "t3", "name": "Hello Again"}
+                ]
+            }
+        });
+
+        filter_exact_matches(&mut data, "Hello");
+
+        let items = data["tracks"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 2);
+        assert!(items[0]["name"].as_str().unwrap().contains("Hello"));
+        assert!(items[1]["name"].as_str().unwrap().contains("Hello"));
+    }
+
+    #[test]
+    fn filter_exact_matches_case_insensitive() {
+        let mut data = json!({
+            "artists": {
+                "items": [
+                    {"id": "a1", "name": "THE BEATLES"},
+                    {"id": "a2", "name": "Beetle"},
+                    {"id": "a3", "name": "Beatles Cover Band"}
+                ]
+            }
+        });
+
+        filter_exact_matches(&mut data, "beatles");
+
+        let items = data["artists"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn filter_exact_matches_handles_missing_name() {
+        let mut data = json!({
+            "albums": {
+                "items": [
+                    {"id": "a1", "name": "Album One"},
+                    {"id": "a2"}
+                ]
+            }
+        });
+
+        filter_exact_matches(&mut data, "Album");
+
+        let items = data["albums"]["items"].as_array().unwrap();
+        assert_eq!(items.len(), 1);
+    }
+
+    #[test]
+    fn extract_first_uri_from_pins() {
+        let pins = vec![json!({"uri": "spotify:track:pin123"})];
+        let spotify = json!({
+            "tracks": {
+                "items": [{"uri": "spotify:track:api123"}]
+            }
+        });
+
+        let uri = extract_first_uri(&pins, &spotify);
+        assert_eq!(uri, Some("spotify:track:pin123".to_string()));
+    }
+
+    #[test]
+    fn extract_first_uri_from_spotify_when_no_pins() {
+        let pins: Vec<Value> = vec![];
+        let spotify = json!({
+            "tracks": {
+                "items": [{"uri": "spotify:track:api123"}]
+            }
+        });
+
+        let uri = extract_first_uri(&pins, &spotify);
+        assert_eq!(uri, Some("spotify:track:api123".to_string()));
+    }
+
+    #[test]
+    fn extract_first_uri_from_spotify_when_pin_has_no_uri() {
+        let pins = vec![json!({"name": "no uri"})];
+        let spotify = json!({
+            "artists": {
+                "items": [{"uri": "spotify:artist:art123"}]
+            }
+        });
+
+        let uri = extract_first_uri(&pins, &spotify);
+        assert_eq!(uri, Some("spotify:artist:art123".to_string()));
+    }
+
+    #[test]
+    fn extract_first_uri_returns_none_when_empty() {
+        let pins: Vec<Value> = vec![];
+        let spotify = json!({});
+
+        let uri = extract_first_uri(&pins, &spotify);
+        assert!(uri.is_none());
+    }
+
+    #[test]
+    fn extract_first_uri_tries_multiple_result_types() {
+        let pins: Vec<Value> = vec![];
+        let spotify = json!({
+            "tracks": {
+                "items": []
+            },
+            "albums": {
+                "items": [{"uri": "spotify:album:alb123"}]
+            }
+        });
+
+        let uri = extract_first_uri(&pins, &spotify);
+        assert_eq!(uri, Some("spotify:album:alb123".to_string()));
+    }
+}

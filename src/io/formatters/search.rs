@@ -116,3 +116,166 @@ pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_search_results_with_tracks() {
+        let payload = json!({
+            "tracks": {
+                "items": [
+                    { "name": "Track 1", "artists": [{ "name": "Artist 1" }], "fuzzy_score": 90.0 },
+                    { "name": "Track 2", "artists": [{ "name": "Artist 2" }], "fuzzy_score": 85.0 }
+                ]
+            }
+        });
+        format_search_results(&payload);
+    }
+
+    #[test]
+    fn format_search_results_with_pins() {
+        let payload = json!({
+            "pins": [
+                { "alias": "my favorite", "type": "track" },
+                { "alias": "chill playlist", "type": "playlist" }
+            ]
+        });
+        format_search_results(&payload);
+    }
+
+    #[test]
+    fn format_search_results_empty() {
+        let payload = json!({});
+        format_search_results(&payload);
+    }
+
+    #[test]
+    fn format_search_results_no_matches() {
+        let payload = json!({
+            "tracks": { "items": [] },
+            "albums": { "items": [] },
+            "artists": { "items": [] },
+            "playlists": { "items": [] }
+        });
+        format_search_results(&payload);
+    }
+
+    #[test]
+    fn format_spotify_search_tracks() {
+        let payload = json!({
+            "tracks": {
+                "items": [
+                    { "name": "Song One", "artists": [{ "name": "Artist" }] },
+                    { "name": "Song Two", "artists": [{ "name": "Band" }] }
+                ]
+            }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_albums() {
+        let payload = json!({
+            "albums": {
+                "items": [
+                    { "name": "Album One", "artists": [{ "name": "Artist" }] }
+                ]
+            }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_artists() {
+        let payload = json!({
+            "artists": {
+                "items": [
+                    { "name": "Artist One", "followers": { "total": 1000000 } },
+                    { "name": "Artist Two" }
+                ]
+            }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_playlists() {
+        let payload = json!({
+            "playlists": {
+                "items": [
+                    {
+                        "id": "pl123",
+                        "name": "My Playlist",
+                        "owner": { "display_name": "user123" }
+                    },
+                    {
+                        "id": "pl456",
+                        "name": "",
+                        "owner": { "id": "user456" }
+                    }
+                ]
+            }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_playlists_without_id() {
+        let payload = json!({
+            "playlists": {
+                "items": [
+                    { "name": "No ID Playlist" }
+                ]
+            }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(!has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_all_types() {
+        let payload = json!({
+            "tracks": { "items": [{ "name": "Track", "artists": [{ "name": "Artist" }] }] },
+            "albums": { "items": [{ "name": "Album", "artists": [{ "name": "Artist" }] }] },
+            "artists": { "items": [{ "name": "Artist", "followers": { "total": 500 } }] },
+            "playlists": { "items": [{ "id": "pl1", "name": "Playlist", "owner": { "display_name": "user" } }] }
+        });
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(has_results);
+    }
+
+    #[test]
+    fn format_spotify_search_empty() {
+        let payload = json!({});
+        let mut has_results = false;
+        format_spotify_search(&payload, &mut has_results);
+        assert!(!has_results);
+    }
+
+    #[test]
+    fn format_search_results_nested_spotify() {
+        let payload = json!({
+            "spotify": {
+                "tracks": {
+                    "items": [
+                        { "name": "Nested Track", "artists": [{ "name": "Artist" }] }
+                    ]
+                }
+            }
+        });
+        format_search_results(&payload);
+    }
+}

@@ -822,4 +822,290 @@ mod tests {
         let formatter = TestFormatter;
         assert!(formatter.supported_kinds().is_empty());
     }
+
+    #[test]
+    fn devices_formatter_matches() {
+        let formatter = DevicesFormatter;
+        let payload = json!({ "devices": [] });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn combined_search_formatter_matches() {
+        let formatter = CombinedSearchFormatter;
+        let payload = json!({ "spotify": { "tracks": {} } });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn pins_formatter_matches() {
+        let formatter = PinsFormatter;
+        let payload = json!({ "pins": [] });
+        assert!(formatter.matches(&payload));
+        let payload_with_spotify = json!({ "pins": [], "spotify": {} });
+        assert!(!formatter.matches(&payload_with_spotify));
+    }
+
+    #[test]
+    fn category_list_formatter_matches() {
+        let formatter = CategoryListFormatter;
+        let payload = json!({ "categories": { "items": [] } });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn category_detail_formatter_matches() {
+        let formatter = CategoryDetailFormatter;
+        let payload = json!({ "icons": [], "id": "test" });
+        assert!(formatter.matches(&payload));
+        let with_followers = json!({ "icons": [], "id": "test", "followers": {} });
+        assert!(!formatter.matches(&with_followers));
+    }
+
+    #[test]
+    fn playlist_detail_formatter_matches() {
+        let formatter = PlaylistDetailFormatter;
+        let payload = json!({ "owner": {}, "tracks": {} });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn album_detail_formatter_matches() {
+        let formatter = AlbumDetailFormatter;
+        let payload = json!({ "album_type": "album", "tracks": {} });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn artist_detail_formatter_matches() {
+        let formatter = ArtistDetailFormatter;
+        let payload = json!({ "followers": {}, "genres": [] });
+        assert!(formatter.matches(&payload));
+        let with_album = json!({ "followers": {}, "genres": [], "album": {} });
+        assert!(!formatter.matches(&with_album));
+    }
+
+    #[test]
+    fn user_profile_formatter_matches() {
+        let formatter = UserProfileFormatter;
+        let payload = json!({ "display_name": "User", "product": "premium" });
+        assert!(formatter.matches(&payload));
+        let with_genres = json!({ "display_name": "User", "product": "premium", "genres": [] });
+        assert!(!formatter.matches(&with_genres));
+    }
+
+    #[test]
+    fn show_detail_formatter_matches() {
+        let formatter = ShowDetailFormatter;
+        let payload = json!({ "publisher": "Test", "total_episodes": 10 });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn episode_detail_formatter_matches() {
+        let formatter = EpisodeDetailFormatter;
+        let payload = json!({ "show": {}, "release_date": "2024", "duration_ms": 1000 });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn audiobook_detail_formatter_matches() {
+        let formatter = AudiobookDetailFormatter;
+        let payload = json!({ "authors": [], "total_chapters": 10 });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn chapter_detail_formatter_matches() {
+        let formatter = ChapterDetailFormatter;
+        let payload = json!({ "audiobook": {}, "chapter_number": 1 });
+        assert!(formatter.matches(&payload));
+        assert!(!formatter.matches(&json!({})));
+    }
+
+    #[test]
+    fn playlists_formatter_matches() {
+        let formatter = PlaylistsFormatter;
+        let payload = json!({ "items": [{ "tracks": {} }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn saved_tracks_formatter_matches() {
+        let formatter = SavedTracksFormatter;
+        let payload = json!({ "items": [{ "track": {}, "added_at": "2024" }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn play_history_formatter_matches() {
+        let formatter = PlayHistoryFormatter;
+        let payload = json!({ "items": [{ "track": {}, "played_at": "2024" }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn saved_shows_formatter_matches() {
+        let formatter = SavedShowsFormatter;
+        let payload = json!({ "items": [{ "show": {} }] });
+        assert!(formatter.matches(&payload));
+        let direct = json!({ "items": [{ "publisher": "Test", "total_episodes": 5 }] });
+        assert!(formatter.matches(&direct));
+    }
+
+    #[test]
+    fn show_episodes_formatter_matches() {
+        let formatter = ShowEpisodesFormatter;
+        let payload = json!({ "items": [{ "release_date": "2024", "duration_ms": 1000 }] });
+        assert!(formatter.matches(&payload));
+        let with_album = json!({ "items": [{ "release_date": "2024", "duration_ms": 1000, "album": {} }] });
+        assert!(!formatter.matches(&with_album));
+    }
+
+    #[test]
+    fn saved_episodes_formatter_matches() {
+        let formatter = SavedEpisodesFormatter;
+        let payload = json!({ "items": [{ "episode": {} }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn saved_audiobooks_formatter_matches() {
+        let formatter = SavedAudiobooksFormatter;
+        let payload = json!({ "items": [{ "audiobook": {} }] });
+        assert!(formatter.matches(&payload));
+        let direct = json!({ "items": [{ "authors": [], "total_chapters": 5 }] });
+        assert!(formatter.matches(&direct));
+    }
+
+    #[test]
+    fn audiobook_chapters_formatter_matches() {
+        let formatter = AudiobookChaptersFormatter;
+        let payload = json!({ "items": [{ "chapter_number": 1 }] });
+        assert!(formatter.matches(&payload));
+        let alt = json!({ "items": [{ "audiobook": {}, "duration_ms": 1000 }] });
+        assert!(formatter.matches(&alt));
+    }
+
+    #[test]
+    fn top_tracks_formatter_matches() {
+        let formatter = TopTracksFormatter;
+        let payload = json!({ "items": [{ "album": {} }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn top_artists_formatter_matches() {
+        let formatter = TopArtistsFormatter;
+        let payload = json!({ "items": [{ "genres": [] }] });
+        assert!(formatter.matches(&payload));
+        let empty = json!({ "items": [] });
+        assert!(!formatter.matches(&empty));
+    }
+
+    #[test]
+    fn artist_top_tracks_formatter_matches() {
+        let formatter = ArtistTopTracksFormatter;
+        let payload = json!({ "tracks": [] });
+        assert!(formatter.matches(&payload));
+        let with_items = json!({ "tracks": [], "items": [] });
+        assert!(!formatter.matches(&with_items));
+    }
+
+    #[test]
+    fn spotify_search_formatter_matches() {
+        let formatter = SpotifySearchFormatter;
+        let tracks = json!({ "tracks": { "items": [] } });
+        assert!(formatter.matches(&tracks));
+        let albums = json!({ "albums": { "items": [] } });
+        assert!(formatter.matches(&albums));
+        let artists = json!({ "artists": { "items": [] } });
+        assert!(formatter.matches(&artists));
+        let playlists = json!({ "playlists": { "items": [] } });
+        assert!(formatter.matches(&playlists));
+        // Should not match playlist or album detail
+        let playlist = json!({ "owner": {}, "tracks": { "items": [] } });
+        assert!(!formatter.matches(&playlist));
+        let album = json!({ "album_type": "album", "tracks": { "items": [] } });
+        assert!(!formatter.matches(&album));
+    }
+
+    #[test]
+    fn formatter_names() {
+        assert_eq!(PlayerStatusFormatter.name(), "player_status");
+        assert_eq!(QueueFormatter.name(), "queue");
+        assert_eq!(DevicesFormatter.name(), "devices");
+        assert_eq!(TrackDetailFormatter.name(), "track_detail");
+        assert_eq!(AlbumDetailFormatter.name(), "album_detail");
+        assert_eq!(ArtistDetailFormatter.name(), "artist_detail");
+        assert_eq!(PlaylistDetailFormatter.name(), "playlist_detail");
+        assert_eq!(UserProfileFormatter.name(), "user_profile");
+    }
+
+    #[test]
+    fn registry_format_with_kind_uses_kind_matching() {
+        let registry = FormatterRegistry::new();
+        let payload = json!({ "item": { "name": "Test" }, "is_playing": true });
+        // This should use the player status formatter via kind matching
+        registry.format_with_kind(&payload, "Test", Some(PayloadKind::PlayerStatus));
+    }
+
+    #[test]
+    fn registry_format_with_kind_falls_back_to_payload_matching() {
+        let registry = FormatterRegistry::new();
+        let payload = json!({ "item": { "name": "Test" }, "is_playing": true });
+        // With no kind, should fall back to payload matching
+        registry.format_with_kind(&payload, "Test", None);
+    }
+
+    #[test]
+    fn registry_format_with_unknown_prints_message() {
+        let registry = FormatterRegistry::new();
+        let payload = json!({ "unknown_field": "value" });
+        // Should just print message when no formatter matches
+        registry.format(&payload, "No match found");
+    }
+
+    #[test]
+    fn global_registry_accessible() {
+        // Just verify the global registry can be accessed
+        let _ = &*REGISTRY;
+    }
+
+    #[test]
+    fn format_payload_works() {
+        let payload = json!({ "unknown": "data" });
+        format_payload(&payload, "Test message");
+    }
+
+    #[test]
+    fn format_payload_with_kind_works() {
+        let payload = json!({ "unknown": "data" });
+        format_payload_with_kind(&payload, "Test message", None);
+    }
+
+    #[test]
+    fn registry_default_same_as_new() {
+        let default_registry = FormatterRegistry::default();
+        let new_registry = FormatterRegistry::new();
+        assert_eq!(default_registry.formatters.len(), new_registry.formatters.len());
+    }
 }

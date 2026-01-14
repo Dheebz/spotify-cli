@@ -98,3 +98,116 @@ pub fn format_audiobook_chapters(items: &[Value], message: &str) {
     print_table("Chapters", &["#", "Name", "Duration"], &rows, &[3, 40, 10]);
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_audiobook_detail_full() {
+        let payload = json!({
+            "name": "The Great Audiobook",
+            "authors": [{ "name": "Author One" }, { "name": "Author Two" }],
+            "narrators": [{ "name": "Narrator One" }],
+            "publisher": "Test Publisher",
+            "description": "A fascinating audiobook about testing",
+            "total_chapters": 25,
+            "explicit": true,
+            "uri": "spotify:audiobook:abc123"
+        });
+        format_audiobook_detail(&payload);
+    }
+
+    #[test]
+    fn format_audiobook_detail_minimal() {
+        let payload = json!({});
+        format_audiobook_detail(&payload);
+    }
+
+    #[test]
+    fn format_audiobook_detail_long_description() {
+        let long_desc = "A".repeat(300);
+        let payload = json!({
+            "name": "Audiobook",
+            "description": long_desc
+        });
+        format_audiobook_detail(&payload);
+    }
+
+    #[test]
+    fn format_audiobook_detail_no_authors() {
+        let payload = json!({
+            "name": "Anonymous Audiobook",
+            "publisher": "Publisher",
+            "total_chapters": 10
+        });
+        format_audiobook_detail(&payload);
+    }
+
+    #[test]
+    fn format_audiobooks_with_items() {
+        let items = vec![
+            json!({
+                "name": "Audiobook One",
+                "authors": [{ "name": "Author A" }],
+                "total_chapters": 15
+            }),
+            json!({
+                "name": "Audiobook Two",
+                "authors": [{ "name": "Author B" }, { "name": "Author C" }],
+                "total_chapters": 30
+            }),
+        ];
+        format_audiobooks(&items, "Your Audiobooks");
+    }
+
+    #[test]
+    fn format_audiobooks_empty() {
+        let items: Vec<Value> = vec![];
+        format_audiobooks(&items, "No Audiobooks");
+    }
+
+    #[test]
+    fn format_audiobooks_wrapped() {
+        let items = vec![json!({
+            "audiobook": {
+                "name": "Wrapped Audiobook",
+                "authors": [{ "name": "Author" }],
+                "total_chapters": 20
+            }
+        })];
+        format_audiobooks(&items, "Saved Audiobooks");
+    }
+
+    #[test]
+    fn format_audiobook_chapters_with_items() {
+        let items = vec![
+            json!({
+                "name": "Chapter 1: Introduction",
+                "duration_ms": 600000,
+                "chapter_number": 1
+            }),
+            json!({
+                "name": "Chapter 2: The Beginning",
+                "duration_ms": 1200000,
+                "chapter_number": 2
+            }),
+        ];
+        format_audiobook_chapters(&items, "Chapters");
+    }
+
+    #[test]
+    fn format_audiobook_chapters_empty() {
+        let items: Vec<Value> = vec![];
+        format_audiobook_chapters(&items, "No Chapters");
+    }
+
+    #[test]
+    fn format_audiobook_chapters_no_chapter_number() {
+        let items = vec![
+            json!({ "name": "Prologue", "duration_ms": 300000 }),
+            json!({ "name": "Epilogue", "duration_ms": 180000 }),
+        ];
+        format_audiobook_chapters(&items, "Chapters");
+    }
+}

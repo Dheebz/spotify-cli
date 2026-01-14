@@ -76,3 +76,86 @@ pub fn format_top_artists(artists: &[Value], message: &str) {
         &[3, 25, 25, 10],
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_artist_detail_full() {
+        let payload = json!({
+            "name": "Test Artist",
+            "followers": { "total": 5000000 },
+            "genres": ["rock", "alternative rock", "indie"],
+            "popularity": 85,
+            "uri": "spotify:artist:abc123"
+        });
+        format_artist_detail(&payload);
+    }
+
+    #[test]
+    fn format_artist_detail_minimal() {
+        let payload = json!({});
+        format_artist_detail(&payload);
+    }
+
+    #[test]
+    fn format_artist_detail_no_genres() {
+        let payload = json!({
+            "name": "New Artist",
+            "followers": { "total": 100 },
+            "popularity": 10
+        });
+        format_artist_detail(&payload);
+    }
+
+    #[test]
+    fn format_artist_detail_empty_genres() {
+        let payload = json!({
+            "name": "Artist",
+            "genres": [],
+            "followers": { "total": 500 }
+        });
+        format_artist_detail(&payload);
+    }
+
+    #[test]
+    fn format_top_artists_with_data() {
+        let artists = vec![
+            json!({
+                "name": "Artist One",
+                "genres": ["pop", "dance", "electronic"],
+                "popularity": 90
+            }),
+            json!({
+                "name": "Artist Two",
+                "genres": ["rock"],
+                "popularity": 75
+            }),
+        ];
+        format_top_artists(&artists, "Your Top Artists This Month");
+    }
+
+    #[test]
+    fn format_top_artists_empty() {
+        let artists: Vec<Value> = vec![];
+        format_top_artists(&artists, "No Top Artists");
+    }
+
+    #[test]
+    fn format_top_artists_minimal() {
+        let artists = vec![json!({})];
+        format_top_artists(&artists, "Artists");
+    }
+
+    #[test]
+    fn format_top_artists_many_genres() {
+        let artists = vec![json!({
+            "name": "Multi-Genre Artist",
+            "genres": ["genre1", "genre2", "genre3", "genre4", "genre5"],
+            "popularity": 60
+        })];
+        format_top_artists(&artists, "Artists");
+    }
+}

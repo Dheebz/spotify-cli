@@ -80,3 +80,113 @@ pub fn format_show_episodes(items: &[Value], message: &str) {
     print_table("Episodes", &["#", "Name", "Duration", "Released"], &rows, &[3, 35, 10, 12]);
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn format_show_detail_full() {
+        let payload = json!({
+            "name": "Test Podcast",
+            "publisher": "Test Publisher",
+            "description": "A great podcast about testing",
+            "total_episodes": 100,
+            "explicit": true,
+            "uri": "spotify:show:abc123"
+        });
+        format_show_detail(&payload);
+    }
+
+    #[test]
+    fn format_show_detail_minimal() {
+        let payload = json!({});
+        format_show_detail(&payload);
+    }
+
+    #[test]
+    fn format_show_detail_long_description() {
+        let long_desc = "A".repeat(300);
+        let payload = json!({
+            "name": "Podcast",
+            "publisher": "Publisher",
+            "description": long_desc,
+            "total_episodes": 50
+        });
+        format_show_detail(&payload);
+    }
+
+    #[test]
+    fn format_show_detail_not_explicit() {
+        let payload = json!({
+            "name": "Family Podcast",
+            "publisher": "Family",
+            "explicit": false
+        });
+        format_show_detail(&payload);
+    }
+
+    #[test]
+    fn format_shows_with_items() {
+        let items = vec![
+            json!({
+                "name": "Podcast One",
+                "publisher": "Publisher A",
+                "total_episodes": 150
+            }),
+            json!({
+                "name": "Podcast Two",
+                "publisher": "Publisher B",
+                "total_episodes": 75
+            }),
+        ];
+        format_shows(&items, "Your Podcasts");
+    }
+
+    #[test]
+    fn format_shows_empty() {
+        let items: Vec<Value> = vec![];
+        format_shows(&items, "No Podcasts");
+    }
+
+    #[test]
+    fn format_shows_wrapped() {
+        let items = vec![json!({
+            "show": {
+                "name": "Wrapped Podcast",
+                "publisher": "Publisher",
+                "total_episodes": 50
+            }
+        })];
+        format_shows(&items, "Saved Shows");
+    }
+
+    #[test]
+    fn format_show_episodes_with_items() {
+        let items = vec![
+            json!({
+                "name": "Episode One",
+                "duration_ms": 3600000,
+                "release_date": "2024-01-15"
+            }),
+            json!({
+                "name": "Episode Two",
+                "duration_ms": 1800000,
+                "release_date": "2024-01-08"
+            }),
+        ];
+        format_show_episodes(&items, "Recent Episodes");
+    }
+
+    #[test]
+    fn format_show_episodes_empty() {
+        let items: Vec<Value> = vec![];
+        format_show_episodes(&items, "No Episodes");
+    }
+
+    #[test]
+    fn format_show_episodes_minimal() {
+        let items = vec![json!({})];
+        format_show_episodes(&items, "Episodes");
+    }
+}

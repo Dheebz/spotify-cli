@@ -244,4 +244,30 @@ mod tests {
         assert!(resp.items.is_empty());
         assert_eq!(resp.total, Some(50));
     }
+
+    #[test]
+    fn user_private_image_url_returns_first() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123",
+            "images": [
+                {"url": "https://first.jpg", "height": 640, "width": 640},
+                {"url": "https://second.jpg", "height": 300, "width": 300}
+            ]
+        });
+        let user: UserPrivate = serde_json::from_value(json).unwrap();
+        assert_eq!(user.image_url(), Some("https://first.jpg"));
+    }
+
+    #[test]
+    fn user_private_image_url_none_when_empty() {
+        let json = json!({
+            "id": "user123",
+            "type": "user",
+            "uri": "spotify:user:user123"
+        });
+        let user: UserPrivate = serde_json::from_value(json).unwrap();
+        assert!(user.image_url().is_none());
+    }
 }

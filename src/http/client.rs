@@ -209,4 +209,50 @@ mod tests {
         // Just verify it creates successfully
         let _ = client.inner();
     }
+
+    #[test]
+    fn http_client_new() {
+        let client = HttpClient::new();
+        // Just verify it creates and inner() works
+        let _ = client.inner();
+    }
+
+    #[test]
+    fn http_error_api_various_statuses() {
+        let statuses = [400, 402, 405, 500, 502, 503];
+        for status in statuses {
+            let err = HttpError::Api { status, message: "test".to_string() };
+            assert_eq!(err.status_code(), status);
+        }
+    }
+
+    #[test]
+    fn http_error_is_debug() {
+        let err = HttpError::Unauthorized;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("Unauthorized"));
+    }
+
+    #[test]
+    fn http_error_api_user_message() {
+        let err = HttpError::Api { status: 400, message: "test msg".to_string() };
+        assert_eq!(err.user_message(), "test msg");
+    }
+
+    #[test]
+    fn http_error_display_for_all_variants() {
+        // Test display for all constructible variants
+        let api_err = HttpError::Api { status: 500, message: "Server error".to_string() };
+        assert_eq!(format!("{}", api_err), "Server error");
+
+        let rate_err = HttpError::RateLimited { retry_after_secs: 30 };
+        assert!(format!("{}", rate_err).contains("30"));
+    }
+
+    #[test]
+    fn spotify_error_response_deserialization() {
+        let json = r#"{"error": {"status": 400, "message": "Bad request"}}"#;
+        let err: SpotifyErrorResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(err.error.message, "Bad request");
+    }
 }
