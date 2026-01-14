@@ -32,13 +32,10 @@ pub fn filter_exact_matches(data: &mut Value, query: &str) {
     }
 }
 
-/// Extract the first playable URI from pins or spotify results
+/// Extract the first playable URI from spotify results or pins
+/// Prioritizes Spotify results since the user is explicitly searching
 pub fn extract_first_uri(pins: &[Value], spotify: &Value) -> Option<String> {
-    if let Some(first_pin) = pins.first()
-        && let Some(uri) = first_pin.get("uri").and_then(|v| v.as_str()) {
-            return Some(uri.to_string());
-        }
-
+    // Prioritize Spotify search results - the user is searching for something specific
     for result_type in SEARCH_RESULT_KEYS {
         if let Some(items) = spotify
             .get(result_type)
@@ -49,6 +46,12 @@ pub fn extract_first_uri(pins: &[Value], spotify: &Value) -> Option<String> {
                     return Some(uri.to_string());
                 }
     }
+
+    // Fall back to pins if no Spotify results
+    if let Some(first_pin) = pins.first()
+        && let Some(uri) = first_pin.get("uri").and_then(|v| v.as_str()) {
+            return Some(uri.to_string());
+        }
 
     None
 }
@@ -180,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn extract_first_uri_from_pins() {
+    fn extract_first_uri_prioritizes_spotify_results() {
         let pins = vec![json!({"uri": "spotify:track:pin123"})];
         let spotify = json!({
             "tracks": {
@@ -188,6 +191,21 @@ mod tests {
             }
         });
 
+        // Spotify results take priority since user is explicitly searching
+        let uri = extract_first_uri(&pins, &spotify);
+        assert_eq!(uri, Some("spotify:track:api123".to_string()));
+    }
+
+    #[test]
+    fn extract_first_uri_falls_back_to_pins() {
+        let pins = vec![json!({"uri": "spotify:track:pin123"})];
+        let spotify = json!({
+            "tracks": {
+                "items": []
+            }
+        });
+
+        // Falls back to pins when no Spotify results
         let uri = extract_first_uri(&pins, &spotify);
         assert_eq!(uri, Some("spotify:track:pin123".to_string()));
     }

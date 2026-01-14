@@ -108,9 +108,11 @@ use std::future::Future;
 
 use crate::http::api::SpotifyApi;
 use crate::io::output::{ErrorKind, Response};
+use crate::oauth::flow::OAuthFlow;
 use crate::storage::config::Config;
 use crate::storage::pins::{Pin, PinStore};
 use crate::storage::token_store::TokenStore;
+use tracing::info;
 
 /// Initialize a TokenStore with standardized error handling
 pub(crate) fn init_token_store() -> Result<TokenStore, Response> {
@@ -144,6 +146,7 @@ pub(crate) fn load_config() -> Result<Config, Response> {
 }
 
 /// Get an authenticated Spotify API client
+/// Automatically refreshes expired tokens when possible
 pub(crate) async fn get_authenticated_client() -> Result<SpotifyApi, Response> {
     let token_store = init_token_store()?;
 
@@ -152,11 +155,35 @@ pub(crate) async fn get_authenticated_client() -> Result<SpotifyApi, Response> {
     })?;
 
     if token.is_expired() {
-        return Err(Response::err(
-            401,
-            "Token expired. Run: spotify-cli auth refresh",
-            ErrorKind::Auth,
-        ));
+        // Try to auto-refresh the token
+        let refresh_token = token.refresh_token.as_ref().ok_or_else(|| {
+            Response::err(401, "Token expired and no refresh token. Run: spotify-cli auth login", ErrorKind::Auth)
+        })?;
+
+        let config = load_config()?;
+        let flow = OAuthFlow::new(config.client_id().to_string());
+
+        match flow.refresh(refresh_token).await {
+            Ok(new_token) => {
+                info!("Auto-refreshed expired token");
+                if let Err(e) = token_store.save(&new_token) {
+                    return Err(Response::err_with_details(
+                        500,
+                        "Failed to save refreshed token",
+                        ErrorKind::Storage,
+                        e.to_string(),
+                    ));
+                }
+                return Ok(SpotifyApi::new(new_token.access_token));
+            }
+            Err(_) => {
+                return Err(Response::err(
+                    401,
+                    "Token expired and refresh failed. Run: spotify-cli auth login",
+                    ErrorKind::Auth,
+                ));
+            }
+        }
     }
 
     Ok(SpotifyApi::new(token.access_token))
