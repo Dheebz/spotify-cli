@@ -82,10 +82,32 @@ pub async fn player_play(uri: Option<&str>, pin: Option<&str>) -> Response {
     };
 
     let has_uri = context_uri.is_some();
+
+    // Determine if this is a track URI (needs uris param) or context URI (album/playlist/artist)
+    let is_track_uri = context_uri
+        .as_ref()
+        .map(|u| u.starts_with("spotify:track:"))
+        .unwrap_or(false);
+
     with_client(|client| async move {
-        match start_resume_playback::start_resume_playback(&client, context_uri.as_deref(), None)
-            .await
-        {
+        // If no URI provided, check if already playing to avoid 403
+        if !has_uri {
+            match now_playing::is_playing(&client).await {
+                Ok(true) => return Response::success(204, "Already playing"),
+                Ok(false) => {}
+                Err(e) => return e,
+            }
+        }
+
+        // Track URIs must be passed via `uris` param, context URIs via `context_uri`
+        let result = if is_track_uri {
+            let track_uris = vec![context_uri.clone().unwrap()];
+            start_resume_playback::start_resume_playback(&client, None, Some(&track_uris)).await
+        } else {
+            start_resume_playback::start_resume_playback(&client, context_uri.as_deref(), None).await
+        };
+
+        match result {
             Ok(_) => {
                 if has_uri {
                     Response::success(204, "Playing requested content")
@@ -101,6 +123,13 @@ pub async fn player_play(uri: Option<&str>, pin: Option<&str>) -> Response {
 
 pub async fn player_pause() -> Response {
     with_client(|client| async move {
+        // Check if already paused to avoid 403
+        match now_playing::is_playing(&client).await {
+            Ok(false) => return Response::success(204, "Already paused"),
+            Ok(true) => {}
+            Err(e) => return e,
+        }
+
         match pause_playback::pause_playback(&client).await {
             Ok(_) => Response::success(204, "Playback paused"),
             Err(e) => Response::from_http_error(&e, "Failed to pause playback"),

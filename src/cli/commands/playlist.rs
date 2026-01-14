@@ -1,7 +1,7 @@
 use crate::endpoints::playlists::{
     add_items_to_playlist, change_playlist_details, create_playlist, follow_playlist,
-    get_current_user_playlists, get_featured_playlists, get_playlist, get_playlist_cover_image,
-    get_users_playlists, remove_items_from_playlist, unfollow_playlist, update_playlist_items,
+    get_current_user_playlists, get_playlist, get_playlist_cover_image, get_users_playlists,
+    remove_items_from_playlist, unfollow_playlist, update_playlist_items,
 };
 use crate::endpoints::user::get_current_user;
 use crate::io::output::{ErrorKind, Response};
@@ -280,21 +280,6 @@ pub async fn playlist_duplicate(playlist: &str, new_name: Option<&str>) -> Respo
         }
 
         Response::success_with_payload(200, format!("Duplicated playlist as '{}'", name), new_playlist)
-    }).await
-}
-
-/// Get featured playlists
-pub async fn playlist_featured(limit: u8, offset: u32) -> Response {
-    with_client(|client| async move {
-        match get_featured_playlists::get_featured_playlists(&client, Some(limit), Some(offset)).await {
-            Ok(Some(payload)) => Response::success_with_payload(200, "Featured playlists", payload),
-            Ok(None) => Response::success_with_payload(
-                200,
-                "No featured playlists",
-                serde_json::json!({ "playlists": { "items": [] } }),
-            ),
-            Err(e) => Response::from_http_error(&e, "Failed to get featured playlists"),
-        }
     }).await
 }
 

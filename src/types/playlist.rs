@@ -131,15 +131,6 @@ impl PlaylistSimplified {
     }
 }
 
-/// Featured playlists response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeaturedPlaylists {
-    /// Message from Spotify.
-    pub message: Option<String>,
-    /// Paginated playlists.
-    pub playlists: Paginated<PlaylistSimplified>,
-}
-
 /// Category playlists response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryPlaylists {
@@ -246,22 +237,6 @@ mod tests {
         });
         let tracks_ref: PlaylistTracksRef = serde_json::from_value(json).unwrap();
         assert_eq!(tracks_ref.total, 42);
-    }
-
-    #[test]
-    fn featured_playlists_deserializes() {
-        let json = json!({
-            "message": "Featured today",
-            "playlists": {
-                "href": "https://api.spotify.com/v1/browse/featured-playlists",
-                "items": [],
-                "total": 0,
-                "limit": 20,
-                "offset": 0
-            }
-        });
-        let featured: FeaturedPlaylists = serde_json::from_value(json).unwrap();
-        assert_eq!(featured.message, Some("Featured today".to_string()));
     }
 
     #[test]

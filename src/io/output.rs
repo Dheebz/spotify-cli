@@ -50,7 +50,6 @@ pub enum PayloadKind {
     ArtistTopTracks,
     RelatedArtists,
     NewReleases,
-    FeaturedPlaylists,
     FollowedArtists,
 
     // Library

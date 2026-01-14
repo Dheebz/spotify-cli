@@ -712,7 +712,7 @@ mod playlist_endpoints {
     use spotify_cli::endpoints::playlists::{
         get_playlist, get_current_user_playlists, create_playlist,
         add_items_to_playlist, remove_items_from_playlist, change_playlist_details,
-        follow_playlist, unfollow_playlist, get_featured_playlists,
+        follow_playlist, unfollow_playlist,
     };
 
     #[tokio::test]
@@ -853,25 +853,6 @@ mod playlist_endpoints {
             .await;
 
         let result = unfollow_playlist::unfollow_playlist(&api, "playlist123").await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_get_featured_playlists() {
-        let (server, api) = setup().await;
-
-        Mock::given(method("GET"))
-            .and(path("/browse/featured-playlists"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "message": "Monday morning music",
-                "playlists": {
-                    "items": [{"id": "f1", "name": "Morning Coffee"}]
-                }
-            })))
-            .mount(&server)
-            .await;
-
-        let result = get_featured_playlists::get_featured_playlists(&api, Some(20), Some(0)).await;
         assert!(result.is_ok());
     }
 }

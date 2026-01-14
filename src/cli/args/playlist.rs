@@ -111,15 +111,6 @@ pub enum PlaylistCommand {
         #[arg(long, short = 'n')]
         name: Option<String>,
     },
-    /// Browse featured playlists
-    Featured {
-        /// Number of playlists to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
-        limit: u8,
-        /// Offset for pagination
-        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
-        offset: u32,
-    },
     /// Get playlist cover image URL
     Cover {
         /// Playlist ID, URL, or pin alias

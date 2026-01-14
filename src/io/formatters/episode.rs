@@ -43,12 +43,22 @@ pub fn format_episodes(items: &[Value], message: &str) {
     println!("{}:", message);
     println!();
 
-    let rows: Vec<Vec<String>> = items
+    // Filter out ghost entries (episodes that are no longer available)
+    let valid_items: Vec<_> = items
+        .iter()
+        .filter(|item| {
+            let episode = item.get("episode").unwrap_or(*item);
+            // Check if the episode has a valid id (non-null)
+            episode.get("id").and_then(|v| v.as_str()).is_some()
+        })
+        .collect();
+
+    let rows: Vec<Vec<String>> = valid_items
         .iter()
         .enumerate()
         .map(|(i, item)| {
             // Handle both direct episode objects and wrapped {"episode": ...} objects
-            let episode = item.get("episode").unwrap_or(item);
+            let episode = item.get("episode").unwrap_or(*item);
             let name = episode.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
             let show = episode
                 .get("show")

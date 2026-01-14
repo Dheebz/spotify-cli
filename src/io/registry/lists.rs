@@ -14,7 +14,7 @@ impl PayloadFormatter for PlaylistsFormatter {
     }
 
     fn supported_kinds(&self) -> &'static [PayloadKind] {
-        &[PayloadKind::PlaylistList, PayloadKind::FeaturedPlaylists]
+        &[PayloadKind::PlaylistList]
     }
 
     fn matches(&self, payload: &Value) -> bool {
@@ -219,11 +219,10 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn playlist_formatter_supports_multiple_kinds() {
+    fn playlist_formatter_supports_playlist_list() {
         let formatter = PlaylistsFormatter;
         let kinds = formatter.supported_kinds();
         assert!(kinds.contains(&PayloadKind::PlaylistList));
-        assert!(kinds.contains(&PayloadKind::FeaturedPlaylists));
     }
 
     #[test]

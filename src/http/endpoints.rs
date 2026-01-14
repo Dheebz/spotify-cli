@@ -42,7 +42,6 @@ pub enum Endpoint<'a> {
     PlaylistCoverImage { id: &'a str },
     CurrentUserPlaylists { limit: u8, offset: u32 },
     UserPlaylists { user_id: &'a str },
-    FeaturedPlaylists { limit: u8, offset: u32 },
     CategoryPlaylists { category_id: &'a str, limit: u8, offset: u32 },
 
     SavedTracks { limit: u8, offset: u32 },
@@ -141,9 +140,6 @@ impl<'a> Endpoint<'a> {
                 format!("/me/playlists?limit={}&offset={}", limit, offset)
             }
             Endpoint::UserPlaylists { user_id } => format!("/users/{}/playlists", user_id),
-            Endpoint::FeaturedPlaylists { limit, offset } => {
-                format!("/browse/featured-playlists?limit={}&offset={}", limit, offset)
-            }
             Endpoint::CategoryPlaylists { category_id, limit, offset } => {
                 format!("/browse/categories/{}/playlists?limit={}&offset={}", category_id, limit, offset)
             }
@@ -341,10 +337,6 @@ mod tests {
 
     #[test]
     fn browse_endpoints() {
-        assert_eq!(
-            Endpoint::FeaturedPlaylists { limit: 20, offset: 0 }.path(),
-            "/browse/featured-playlists?limit=20&offset=0"
-        );
         assert_eq!(
             Endpoint::CategoryPlaylists { category_id: "pop", limit: 20, offset: 0 }.path(),
             "/browse/categories/pop/playlists?limit=20&offset=0"

@@ -4,7 +4,6 @@ pub mod change_playlist_details;
 pub mod create_playlist;
 pub mod follow_playlist;
 pub mod get_current_user_playlists;
-pub mod get_featured_playlists;
 pub mod get_playlist;
 pub mod get_playlist_cover_image;
 pub mod get_playlist_items;

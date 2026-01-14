@@ -115,6 +115,82 @@ pub fn format_spotify_search(payload: &Value, has_results: &mut bool) {
             print_table("Playlists", &["Name", "Owner", "Score"], &rows, &[35, 15, 5]);
         }
     }
+
+    if let Some(shows) = payload.get("shows").and_then(|t| t.get("items")).and_then(|i| i.as_array())
+        && !shows.is_empty() {
+            *has_results = true;
+            let rows: Vec<Vec<String>> = shows.iter().map(|show| {
+                let name = show.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                let publisher = show.get("publisher").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                let episodes = show
+                    .get("total_episodes")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| "-".to_string());
+                vec![
+                    truncate(name, 30),
+                    truncate(publisher, 20),
+                    episodes,
+                    get_score(show).to_string(),
+                ]
+            }).collect();
+            print_table("Shows", &["Name", "Publisher", "Episodes", "Score"], &rows, &[30, 20, 8, 5]);
+        }
+
+    if let Some(episodes) = payload.get("episodes").and_then(|t| t.get("items")).and_then(|i| i.as_array())
+        && !episodes.is_empty() {
+            *has_results = true;
+            let rows: Vec<Vec<String>> = episodes.iter().map(|ep| {
+                let name = ep.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                let show_name = ep
+                    .get("show")
+                    .and_then(|s| s.get("name"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Unknown");
+                let duration = ep
+                    .get("duration_ms")
+                    .and_then(|v| v.as_u64())
+                    .map(|ms| format!("{}m", ms / 60000))
+                    .unwrap_or_else(|| "-".to_string());
+                vec![
+                    truncate(name, 30),
+                    truncate(show_name, 20),
+                    duration,
+                    get_score(ep).to_string(),
+                ]
+            }).collect();
+            print_table("Episodes", &["Name", "Show", "Duration", "Score"], &rows, &[30, 20, 8, 5]);
+        }
+
+    if let Some(audiobooks) = payload.get("audiobooks").and_then(|t| t.get("items")).and_then(|i| i.as_array())
+        && !audiobooks.is_empty() {
+            *has_results = true;
+            let rows: Vec<Vec<String>> = audiobooks.iter().map(|book| {
+                let name = book.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                let authors = book
+                    .get("authors")
+                    .and_then(|a| a.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|a| a.get("name").and_then(|v| v.as_str()))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    })
+                    .unwrap_or_else(|| "Unknown".to_string());
+                let chapters = book
+                    .get("total_chapters")
+                    .and_then(|v| v.as_u64())
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| "-".to_string());
+                vec![
+                    truncate(name, 30),
+                    truncate(&authors, 20),
+                    chapters,
+                    get_score(book).to_string(),
+                ]
+            }).collect();
+            print_table("Audiobooks", &["Name", "Author", "Chapters", "Score"], &rows, &[30, 20, 8, 5]);
+        }
 }
 
 #[cfg(test)]

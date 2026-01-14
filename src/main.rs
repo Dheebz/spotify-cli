@@ -156,9 +156,6 @@ async fn main() {
             PlaylistCommand::Duplicate { playlist, name } => {
                 commands::playlist_duplicate(&playlist, name.as_deref()).await
             }
-            PlaylistCommand::Featured { limit, offset } => {
-                commands::playlist_featured(limit, offset).await
-            }
             PlaylistCommand::Cover { playlist } => {
                 commands::playlist_cover(&playlist).await
             }
