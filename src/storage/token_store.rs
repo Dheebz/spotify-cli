@@ -206,4 +206,24 @@ mod tests {
 
         store.delete().unwrap();
     }
+
+    #[test]
+    fn delete_nonexistent_is_ok() {
+        let store = temp_store();
+        let result = store.delete();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn path_returns_correct_path() {
+        let store = temp_store();
+        assert!(store.path().to_str().unwrap().contains("token.json"));
+    }
+
+    #[test]
+    fn token_store_error_display() {
+        let err = TokenStoreError::NotFound;
+        let display = format!("{}", err);
+        assert!(display.contains("not found"));
+    }
 }
