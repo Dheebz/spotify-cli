@@ -2,16 +2,18 @@
 
 use clap::Subcommand;
 
+use crate::constants::{DEFAULT_LIMIT, DEFAULT_OFFSET};
+
 #[derive(Subcommand)]
 pub enum LibraryCommand {
     /// List saved tracks (liked songs) (alias: ls)
     #[command(alias = "ls")]
     List {
         /// Number of tracks to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Save tracks to library (like songs)

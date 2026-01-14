@@ -39,7 +39,11 @@ pub async fn player_status(id_only: Option<&str>) -> Response {
                 }
 
                 let message = if state.is_playing { "Playing" } else { "Paused" };
-                Response::success_with_payload(200, message, serde_json::to_value(&state).unwrap())
+                Response::success_with_payload(
+                    200,
+                    message,
+                    serde_json::to_value(&state).expect("PlaybackState serializes to JSON"),
+                )
             }
             Err(e) => {
                 if id_only.is_some() {

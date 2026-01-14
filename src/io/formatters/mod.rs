@@ -15,13 +15,13 @@ pub mod show;
 pub mod track;
 pub mod user;
 
-pub use album::format_album_detail;
+pub use album::{format_album_detail, format_saved_albums};
 pub use artist::{format_artist_detail, format_top_artists};
 pub use audiobook::{format_audiobook_chapters, format_audiobook_detail, format_audiobooks};
 pub use category::{format_categories, format_category_detail};
 pub use chapter::format_chapter_detail;
 pub use episode::{format_episode_detail, format_episodes};
-pub use library::{format_library_check, format_saved_tracks};
+pub use library::{format_library_check, format_markets, format_saved_tracks};
 pub use pin::format_pins;
 pub use player::{format_devices, format_player_status, format_queue};
 pub use playlist::{format_playlist_detail, format_playlists};

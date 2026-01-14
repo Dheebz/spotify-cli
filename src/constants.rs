@@ -56,11 +56,24 @@ pub const PINS_FILENAME: &str = "pins.json";
 pub const CONFIG_FILENAME: &str = "config.toml";
 
 // =============================================================================
+// Pagination
+// =============================================================================
+
+/// Default limit for paginated requests.
+pub const DEFAULT_LIMIT: u8 = 20;
+
+/// Maximum allowed limit for most Spotify endpoints.
+pub const MAX_LIMIT: u8 = 50;
+
+/// Default offset for paginated requests.
+pub const DEFAULT_OFFSET: u32 = 0;
+
+// =============================================================================
 // Search
 // =============================================================================
 
 /// Default limit for search results per type.
-pub const DEFAULT_SEARCH_LIMIT: u8 = 20;
+pub const DEFAULT_SEARCH_LIMIT: u8 = DEFAULT_LIMIT;
 
 /// Maximum allowed search limit per type.
-pub const MAX_SEARCH_LIMIT: u8 = 50;
+pub const MAX_SEARCH_LIMIT: u8 = MAX_LIMIT;

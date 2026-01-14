@@ -2,6 +2,8 @@
 
 use clap::Subcommand;
 
+use crate::constants::{DEFAULT_LIMIT, DEFAULT_OFFSET};
+
 #[derive(Subcommand)]
 pub enum ShowCommand {
     /// Get show (podcast) details
@@ -14,19 +16,19 @@ pub enum ShowCommand {
         /// Show ID or URL
         id: String,
         /// Number of episodes to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// List saved shows
     List {
         /// Number of shows to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Save shows to library
@@ -59,10 +61,10 @@ pub enum EpisodeCommand {
     /// List saved episodes
     List {
         /// Number of episodes to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Save episodes to library
@@ -97,19 +99,19 @@ pub enum AudiobookCommand {
         /// Audiobook ID or URL
         id: String,
         /// Number of chapters to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// List saved audiobooks
     List {
         /// Number of audiobooks to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Save audiobooks to library
@@ -146,10 +148,10 @@ pub enum AlbumCommand {
     /// List saved albums
     List {
         /// Number of albums to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Get album tracks
@@ -157,10 +159,10 @@ pub enum AlbumCommand {
         /// Album ID or URL
         id: String,
         /// Number of tracks to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Save albums to library
@@ -184,10 +186,10 @@ pub enum AlbumCommand {
     /// Browse new album releases
     NewReleases {
         /// Number of albums to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
 }

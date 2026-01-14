@@ -104,11 +104,11 @@ mod tests {
     }
 
     #[test]
-    fn clone_and_copy() {
+    fn copy_trait() {
         let rt = ResourceType::Album;
-        let cloned = rt.clone();
-        let copied = rt;
-        assert_eq!(rt, cloned);
-        assert_eq!(rt, copied);
+        let copied1 = rt; // ResourceType implements Copy
+        let copied2 = rt;
+        assert_eq!(rt, copied1);
+        assert_eq!(rt, copied2);
     }
 }

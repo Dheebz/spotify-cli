@@ -4,6 +4,32 @@ use serde_json::Value;
 
 use crate::io::common::{extract_artist_names, format_duration};
 
+/// Format a list of saved albums
+pub fn format_saved_albums(items: &[Value]) {
+    if items.is_empty() {
+        println!("No saved albums.");
+        return;
+    }
+
+    println!("Saved Albums:");
+    for (i, item) in items.iter().enumerate() {
+        let album = item.get("album").unwrap_or(item);
+        let name = album.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
+        let artists = extract_artist_names(album);
+        let total_tracks = album.get("total_tracks").and_then(|v| v.as_u64()).unwrap_or(0);
+        let release_date = album.get("release_date").and_then(|v| v.as_str()).unwrap_or("Unknown");
+
+        println!(
+            "  {}. {} - {} ({} tracks, {})",
+            i + 1,
+            name,
+            artists,
+            total_tracks,
+            release_date
+        );
+    }
+}
+
 pub fn format_album_detail(payload: &Value) {
     let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("Unknown");
     let artists = extract_artist_names(payload);

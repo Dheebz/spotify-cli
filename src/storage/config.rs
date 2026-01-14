@@ -30,11 +30,14 @@ pub enum ConfigError {
     MissingField(String),
 }
 
-/// Spotify API credentials.
+/// Spotify API credentials and core settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpotifyConfig {
     /// Spotify Developer App client ID.
     pub client_id: String,
+    /// Token storage backend (keyring or file)
+    #[serde(default)]
+    pub token_storage: TokenStorageBackend,
 }
 
 /// Fuzzy search scoring configuration.
@@ -107,6 +110,17 @@ impl Default for SearchConfig {
     }
 }
 
+/// Token storage backend options.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TokenStorageBackend {
+    /// Use system keychain (default, most secure)
+    #[default]
+    Keyring,
+    /// Use file-based storage (fallback)
+    File,
+}
+
 /// Root configuration structure.
 ///
 /// Loaded from `~/.config/spotify-cli/config.toml`.
@@ -153,6 +167,10 @@ impl Config {
 
     pub fn sort_by_score(&self) -> bool {
         self.search.sort_by_score
+    }
+
+    pub fn token_storage(&self) -> TokenStorageBackend {
+        self.spotify_cli.token_storage
     }
 }
 
@@ -262,5 +280,45 @@ client_id = "abc123"
         let toml = r#"client_id = "test_client_id""#;
         let config: SpotifyConfig = toml::from_str(toml).unwrap();
         assert_eq!(config.client_id, "test_client_id");
+    }
+
+    #[test]
+    fn token_storage_defaults_to_keyring() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.token_storage(), TokenStorageBackend::Keyring);
+    }
+
+    #[test]
+    fn token_storage_file_option() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+
+token_storage = "file"
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.token_storage(), TokenStorageBackend::File);
+    }
+
+    #[test]
+    fn token_storage_keyring_option() {
+        let toml = r#"
+[spotify-cli]
+client_id = "abc123"
+
+token_storage = "keyring"
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+        assert_eq!(config.token_storage(), TokenStorageBackend::Keyring);
+    }
+
+    #[test]
+    fn token_storage_backend_default() {
+        let backend = TokenStorageBackend::default();
+        assert_eq!(backend, TokenStorageBackend::Keyring);
     }
 }

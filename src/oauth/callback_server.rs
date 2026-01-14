@@ -105,7 +105,7 @@ impl CallbackServer {
                     .with_header(
                         "Content-Type: text/html; charset=utf-8"
                             .parse::<tiny_http::Header>()
-                            .unwrap(),
+                            .expect("static header string is valid"),
                     );
                 let _ = request.respond(response);
 
@@ -122,7 +122,7 @@ impl CallbackServer {
             let response = Response::from_string(success_html()).with_header(
                 "Content-Type: text/html; charset=utf-8"
                     .parse::<tiny_http::Header>()
-                    .unwrap(),
+                    .expect("static header string is valid"),
             );
             let _ = request.respond(response);
 

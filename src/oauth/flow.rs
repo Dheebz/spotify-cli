@@ -102,7 +102,8 @@ impl OAuthFlow {
     }
 
     fn build_auth_url(&self, pkce: &PkceChallenge) -> String {
-        let mut url = Url::parse(&SpotifyAuth::url(AUTHORIZE_ENDPOINT)).unwrap();
+        let mut url = Url::parse(&SpotifyAuth::url(AUTHORIZE_ENDPOINT))
+            .expect("AUTHORIZE_ENDPOINT is a valid URL");
 
         url.query_pairs_mut()
             .append_pair("client_id", &self.client_id)

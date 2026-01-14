@@ -10,6 +10,8 @@ use std::io;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
 
+use crate::constants::DEFAULT_LIMIT;
+
 // Re-export all command types for convenience
 pub use args::*;
 pub use clap_complete::Shell as CompletionShell;
@@ -69,7 +71,7 @@ pub enum Command {
         #[arg(long = "type", short = 'T')]
         types: Vec<String>,
         /// Results per type (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Only search pinned resources (skip Spotify API)
         #[arg(long)]

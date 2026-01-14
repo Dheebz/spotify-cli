@@ -24,6 +24,24 @@ pub fn format_library_check(results: &[Value]) {
     }
 }
 
+pub fn format_markets(markets: &[Value]) {
+    if markets.is_empty() {
+        println!("No markets available.");
+        return;
+    }
+
+    println!("Available Markets ({} countries):", markets.len());
+    let market_codes: Vec<&str> = markets
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+
+    // Print in columns
+    for chunk in market_codes.chunks(10) {
+        println!("  {}", chunk.join(", "));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

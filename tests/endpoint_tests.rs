@@ -1298,7 +1298,7 @@ mod markets_endpoints {
         let result = get_available_markets::get_available_markets(&api).await;
         assert!(result.is_ok());
         let data = result.unwrap().unwrap();
-        assert!(data["markets"].as_array().unwrap().len() > 0);
+        assert!(!data["markets"].as_array().unwrap().is_empty());
     }
 }
 

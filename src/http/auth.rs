@@ -22,6 +22,7 @@ pub enum AuthError {
 /// Handles token operations via accounts.spotify.com/api/token.
 pub struct SpotifyAuth {
     http: HttpClient,
+    base_url: String,
 }
 
 impl SpotifyAuth {
@@ -29,12 +30,28 @@ impl SpotifyAuth {
     pub fn new() -> Self {
         Self {
             http: HttpClient::new(),
+            base_url: SPOTIFY_AUTH_BASE_URL.to_string(),
+        }
+    }
+
+    /// Create a new authentication client with a custom base URL.
+    ///
+    /// Useful for testing with mock servers.
+    pub fn with_base_url(base_url: String) -> Self {
+        Self {
+            http: HttpClient::new(),
+            base_url,
         }
     }
 
     /// Build a URL for the Spotify accounts endpoint.
     pub fn url(path: &str) -> String {
         format!("{}{}", SPOTIFY_AUTH_BASE_URL, path)
+    }
+
+    /// Build a URL using this client's base URL.
+    fn endpoint(&self, path: &str) -> String {
+        format!("{}{}", self.base_url, path)
     }
 
     /// Exchange authorization code for tokens (PKCE flow)
@@ -75,7 +92,7 @@ impl SpotifyAuth {
         let response = self
             .http
             .inner()
-            .post(Self::url("/api/token"))
+            .post(self.endpoint("/api/token"))
             .form(params)
             .send()
             .await?;

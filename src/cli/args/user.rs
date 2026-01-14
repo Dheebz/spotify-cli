@@ -2,6 +2,8 @@
 
 use clap::Subcommand;
 
+use crate::constants::{DEFAULT_LIMIT, DEFAULT_OFFSET};
+
 #[derive(Subcommand)]
 pub enum UserCommand {
     /// Get your profile information
@@ -15,7 +17,7 @@ pub enum UserCommand {
         #[arg(long, short = 'r', default_value = "medium", value_parser = ["short", "medium", "long"])]
         range: String,
         /// Number of results (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
     },
     /// Get another user's profile
@@ -63,10 +65,10 @@ pub enum InfoCommand {
         #[arg(long, short = 'm', default_value = "US")]
         market: String,
         /// Number of albums to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for album pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
 }

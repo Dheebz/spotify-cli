@@ -163,8 +163,22 @@ impl SpotifyApi {
             return Err(HttpError::from_response(response).await);
         }
 
-        let json: Value = response.json().await?;
-        Ok(Some(json))
+        // Handle response bodies for successful requests
+        // Some endpoints return 200/202 with no body, plain text, or non-JSON responses
+        let bytes = response.bytes().await?;
+        if bytes.is_empty() {
+            return Ok(None);
+        }
+
+        // Try to parse as JSON, but don't error on failure for success responses
+        // Spotify sometimes returns plain text tokens/IDs for control endpoints
+        match serde_json::from_slice(&bytes) {
+            Ok(json) => Ok(Some(json)),
+            Err(_) => {
+                trace!(body = ?String::from_utf8_lossy(&bytes), "Non-JSON success response");
+                Ok(None)
+            }
+        }
     }
 }
 

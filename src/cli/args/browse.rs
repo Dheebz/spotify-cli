@@ -2,6 +2,8 @@
 
 use clap::Subcommand;
 
+use crate::constants::{DEFAULT_LIMIT, DEFAULT_OFFSET};
+
 #[derive(Subcommand)]
 pub enum FollowCommand {
     /// Follow artists
@@ -43,7 +45,7 @@ pub enum FollowCommand {
     /// List followed artists
     List {
         /// Number of artists to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
     },
     /// Check if following artists
@@ -65,10 +67,10 @@ pub enum CategoryCommand {
     /// List browse categories
     List {
         /// Number of categories to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
     /// Get category details
@@ -81,10 +83,10 @@ pub enum CategoryCommand {
         /// Category ID
         id: String,
         /// Number of playlists to return (default 20, max 50)
-        #[arg(long, short = 'l', default_value = "20")]
+        #[arg(long, short = 'l', default_value_t = DEFAULT_LIMIT)]
         limit: u8,
         /// Offset for pagination
-        #[arg(long, short = 'o', default_value = "0")]
+        #[arg(long, short = 'o', default_value_t = DEFAULT_OFFSET)]
         offset: u32,
     },
 }

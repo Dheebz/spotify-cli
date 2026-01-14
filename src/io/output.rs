@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::format_registry::format_payload_with_kind as format_payload;
+use super::registry::format_payload_with_kind as format_payload;
 use crate::http::client::HttpError;
 
 /// Payload type hint for reliable formatter matching.
@@ -144,7 +144,6 @@ pub struct ErrorDetail {
 }
 
 impl Response {
-    #[must_use]
     pub fn success(code: u16, message: impl Into<String>) -> Self {
         Self {
             status: Status::Success,
@@ -156,7 +155,6 @@ impl Response {
         }
     }
 
-    #[must_use]
     pub fn success_with_payload(code: u16, message: impl Into<String>, payload: Value) -> Self {
         Self {
             status: Status::Success,
@@ -171,7 +169,6 @@ impl Response {
     /// Create a success response with typed payload for reliable formatter matching.
     ///
     /// Use this instead of `success_with_payload` when you know the exact payload type.
-    #[must_use]
     pub fn success_typed(
         code: u16,
         message: impl Into<String>,
@@ -189,7 +186,6 @@ impl Response {
     }
 
     /// Create an error response with ErrorKind
-    #[must_use]
     pub fn err(code: u16, message: impl Into<String>, kind: ErrorKind) -> Self {
         Self {
             status: Status::Error,
@@ -205,7 +201,6 @@ impl Response {
     }
 
     /// Create an error response with ErrorKind and details
-    #[must_use]
     pub fn err_with_details(
         code: u16,
         message: impl Into<String>,
@@ -226,7 +221,6 @@ impl Response {
     }
 
     /// Create a Response from an HttpError, preserving the original status code
-    #[must_use]
     pub fn from_http_error(err: &HttpError, context: &str) -> Self {
         let kind = match err {
             HttpError::Network(_) => ErrorKind::Network,
@@ -531,5 +525,91 @@ mod tests {
             let serialized = serde_json::to_string(&kind).unwrap();
             assert!(serialized.contains(expected), "Expected {} in {}", expected, serialized);
         }
+    }
+
+    #[test]
+    fn print_json_outputs_valid_json() {
+        let resp = Response::success(200, "Test");
+        print_json(&resp);
+    }
+
+    #[test]
+    fn print_human_success_with_payload() {
+        let payload = serde_json::json!({"name": "Test"});
+        let resp = Response::success_with_payload(200, "Message", payload);
+        print_human(&resp);
+    }
+
+    #[test]
+    fn print_human_success_without_payload() {
+        let resp = Response::success(200, "Simple message");
+        print_human(&resp);
+    }
+
+    #[test]
+    fn print_human_error_with_details() {
+        let resp = Response::err_with_details(
+            500,
+            "Operation failed",
+            ErrorKind::Api,
+            "Detailed error info",
+        );
+        print_human(&resp);
+    }
+
+    #[test]
+    fn print_human_error_without_details() {
+        let resp = Response::err(404, "Not found", ErrorKind::NotFound);
+        print_human(&resp);
+    }
+
+    #[test]
+    fn from_http_error_api_includes_details() {
+        let http_err = HttpError::Api { status: 500, message: "Server error".to_string() };
+        let resp = Response::from_http_error(&http_err, "Request failed");
+        assert!(resp.error.is_some());
+        let error = resp.error.unwrap();
+        assert_eq!(error.kind, "api_error");
+        assert!(error.details.is_some());
+    }
+
+    #[test]
+    fn from_http_error_unusual_status() {
+        let http_err = HttpError::Api { status: 418, message: "I'm a teapot".to_string() };
+        let resp = Response::from_http_error(&http_err, "Request");
+        assert_eq!(resp.code, 418);
+        // Non-standard status codes should use fallback format
+        assert!(resp.message.contains("418"));
+    }
+
+    #[test]
+    fn from_http_error_bad_gateway() {
+        let http_err = HttpError::Api { status: 502, message: "Bad Gateway".to_string() };
+        let resp = Response::from_http_error(&http_err, "Request");
+        assert_eq!(resp.code, 502);
+        assert!(resp.message.contains("Bad Gateway"));
+    }
+
+    #[test]
+    fn from_http_error_service_unavailable() {
+        let http_err = HttpError::Api { status: 503, message: "Unavailable".to_string() };
+        let resp = Response::from_http_error(&http_err, "Request");
+        assert_eq!(resp.code, 503);
+        assert!(resp.message.contains("Service Unavailable"));
+    }
+
+    #[test]
+    fn from_http_error_bad_request() {
+        let http_err = HttpError::Api { status: 400, message: "Invalid params".to_string() };
+        let resp = Response::from_http_error(&http_err, "Validation");
+        assert_eq!(resp.code, 400);
+        assert!(resp.message.contains("Bad Request"));
+    }
+
+    #[test]
+    fn print_human_with_typed_payload() {
+        let payload = serde_json::json!({"name": "Test Track"});
+        let resp = Response::success_typed(200, "Track", PayloadKind::Track, payload);
+        print_human(&resp);
     }
 }
