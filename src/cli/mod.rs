@@ -23,7 +23,7 @@ pub fn print_completions(shell: Shell) {
 }
 
 #[derive(Parser)]
-#[command(name = "spotify-cli")]
+#[command(name = "spotify-cli", version)]
 #[command(about = "Command line interface for Spotify")]
 pub struct Cli {
     #[command(subcommand)]
