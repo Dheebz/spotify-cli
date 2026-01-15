@@ -34,6 +34,14 @@ pub fn token_file() -> Result<PathBuf, PathError> {
     config_dir().map(|p| p.join(TOKEN_FILENAME))
 }
 
+pub fn socket_file() -> Result<PathBuf, PathError> {
+    config_dir().map(|p| p.join("daemon.sock"))
+}
+
+pub fn pid_file() -> Result<PathBuf, PathError> {
+    config_dir().map(|p| p.join("daemon.pid"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

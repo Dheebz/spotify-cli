@@ -1,9 +1,9 @@
 use clap::Parser;
 use spotify_cli::cli::{
     print_completions, AlbumCommand, AudiobookCommand, AuthCommand, CategoryCommand,
-    ChapterCommand, Cli, Command, DevicesCommand, EpisodeCommand, FollowCommand, InfoCommand,
-    LibraryCommand, PinCommand, PlaylistCommand, PlayerCommand, QueueCommand, ShowCommand,
-    UserCommand,
+    ChapterCommand, Cli, Command, DaemonCommand, DevicesCommand, EpisodeCommand, FollowCommand,
+    InfoCommand, LibraryCommand, PinCommand, PlaylistCommand, PlayerCommand, QueueCommand,
+    ShowCommand, UserCommand,
 };
 use spotify_cli::cli::commands::{self, ArtistQuery, ArtistView};
 use spotify_cli::io::output::{print_human, print_json};
@@ -284,6 +284,12 @@ async fn main() {
             FollowCommand::CheckUser { ids } => commands::follow_check_user(&ids).await,
         },
         Command::Markets => commands::markets_list().await,
+        Command::Daemon { command } => match command {
+            DaemonCommand::Start => commands::daemon_start().await,
+            DaemonCommand::Stop => commands::daemon_stop().await,
+            DaemonCommand::Status => commands::daemon_status().await,
+            DaemonCommand::Run => commands::daemon_run().await,
+        },
         Command::Completions { shell } => {
             print_completions(shell);
             return;

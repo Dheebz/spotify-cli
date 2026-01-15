@@ -1,0 +1,70 @@
+name: 'Changelog'
+description: 'Generate or validate changelog using git-cliff'
+
+inputs:
+  mode:
+    description: 'Mode: generate, validate, or extract'
+    required: false
+    default: 'validate'
+  version:
+    description: 'Version to extract changelog for (extract mode)'
+    required: false
+    default: ''
+  output-file:
+    description: 'Output file path'
+    required: false
+    default: 'CHANGELOG.md'
+
+outputs:
+  changelog:
+    description: 'Generated/extracted changelog content'
+    value: ${{ steps.changelog.outputs.content }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install git-cliff
+      shell: bash
+      run: |
+        if ! command -v git-cliff &> /dev/null; then
+          cargo install git-cliff
+        fi
+
+    - name: Generate changelog
+      if: inputs.mode == 'generate'
+      id: generate
+      shell: bash
+      run: |
+        git-cliff --output ${{ inputs.output-file }}
+        echo "Generated changelog to ${{ inputs.output-file }}"
+
+    - name: Validate changelog exists
+      if: inputs.mode == 'validate'
+      shell: bash
+      run: |
+        if [ ! -f "${{ inputs.output-file }}" ]; then
+          echo "::error::${{ inputs.output-file }} not found"
+          exit 1
+        fi
+        echo "Changelog exists: ${{ inputs.output-file }}"
+
+    - name: Extract version changelog
+      if: inputs.mode == 'extract'
+      id: changelog
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        VERSION="${VERSION#v}"
+
+        # Extract changelog for specific version using git-cliff
+        CONTENT=$(git-cliff --unreleased --strip header 2>/dev/null || echo "")
+
+        if [ -z "$CONTENT" ]; then
+          # Fallback: extract from existing CHANGELOG.md
+          CONTENT=$(sed -n "/## \[${VERSION}\]/,/## \[/p" ${{ inputs.output-file }} | head -n -1)
+        fi
+
+        # Output for use in release notes
+        echo "content<<EOF" >> $GITHUB_OUTPUT
+        echo "$CONTENT" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT

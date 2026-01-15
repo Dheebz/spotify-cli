@@ -11,6 +11,7 @@ A command-line interface for Spotify, built in Rust. Control playback, manage pl
 - **Device Control**: List devices and transfer playback
 - **Pin System**: Create shortcuts to frequently used resources
 - **JSON Output**: Machine-readable output for scripting
+- **RPC Daemon**: JSON-RPC 2.0 over Unix sockets for external control (Neovim, scripts)
 
 ## Installation
 
@@ -264,6 +265,24 @@ spotify-cli player play --pin "work-music"
 spotify-cli search "work" --pins-only
 ```
 
+### Daemon (RPC)
+
+Run a background daemon for external control via JSON-RPC 2.0:
+
+```bash
+spotify-cli daemon start   # Start daemon in background
+spotify-cli daemon stop    # Stop daemon
+spotify-cli daemon status  # Check if running
+spotify-cli daemon run     # Run in foreground (debugging)
+
+# Send commands via Unix socket
+echo '{"jsonrpc":"2.0","method":"player.next","id":1}' | nc -U ~/.config/spotify-cli/daemon.sock
+```
+
+The daemon exposes all 68 CLI commands via RPC, plus real-time playback events. Perfect for integrating with Neovim, scripts, or custom applications.
+
+See [docs/RPC.md](docs/RPC.md) for the full API reference.
+
 ## JSON Output
 
 Add `--json` or `-j` to any command for machine-readable output:
@@ -303,6 +322,8 @@ similarity_weight = 20.0    # Weight for similarity bonus
 | `~/.config/spotify-cli/config.toml` | Configuration |
 | `~/.config/spotify-cli/token.json` | OAuth tokens |
 | `~/.config/spotify-cli/pins.json` | Pinned resources |
+| `~/.config/spotify-cli/daemon.sock` | RPC Unix socket |
+| `~/.config/spotify-cli/daemon.pid` | Daemon process ID |
 
 On Windows, files are stored in `%APPDATA%\spotify-cli\`.
 

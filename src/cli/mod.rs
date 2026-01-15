@@ -170,6 +170,11 @@ pub enum Command {
     },
     /// List available Spotify markets (countries)
     Markets,
+    /// RPC daemon for external control (Neovim, scripts, etc.)
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommand,
+    },
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for

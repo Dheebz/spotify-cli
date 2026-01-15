@@ -9,5 +9,6 @@ pub mod http;
 pub mod io;
 pub mod logging;
 pub mod oauth;
+pub mod rpc;
 pub mod storage;
 pub mod types;

@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run (no actual release)'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Determine if this is a release or dry-run
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      is-release: ${{ steps.check.outputs.is-release }}
+      version: ${{ steps.check.outputs.version }}
+      dry-run: ${{ steps.check.outputs.dry-run }}
+    steps:
+      - name: Check release conditions
+        id: check
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "is-release=true" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "dry-run=false" >> $GITHUB_OUTPUT
+          else
+            # Get version from Cargo.toml for dry-run naming
+            echo "is-release=false" >> $GITHUB_OUTPUT
+            echo "version=dev" >> $GITHUB_OUTPUT
+            echo "dry-run=true" >> $GITHUB_OUTPUT
+          fi
+
+  # Run checks first
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/format-lint
+      - uses: ./.github/actions/test
+
+  # Build for all platforms
+  build:
+    name: Build (${{ matrix.target }})
+    needs: [prepare, checks]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/build
+        with:
+          target: ${{ matrix.target }}
+          version: ${{ needs.prepare.outputs.version }}
+          upload-artifact: ${{ needs.prepare.outputs.is-release }}
+
+  # Validate changelog
+  changelog:
+    name: Changelog
+    needs: prepare
+    runs-on: ubuntu-latest
+    outputs:
+      content: ${{ steps.extract.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate changelog (dry-run)
+        if: needs.prepare.outputs.dry-run == 'true'
+        uses: ./.github/actions/changelog
+        with:
+          mode: validate
+
+      - name: Extract changelog (release)
+        if: needs.prepare.outputs.is-release == 'true'
+        id: extract
+        uses: ./.github/actions/changelog
+        with:
+          mode: extract
+          version: ${{ needs.prepare.outputs.version }}
+
+  # Publish release
+  release:
+    name: Release
+    needs: [prepare, build, changelog]
+    if: needs.prepare.outputs.is-release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/release
+        with:
+          version: ${{ needs.prepare.outputs.version }}
+          dry-run: 'false'
+          crates-token: ${{ secrets.CRATES_IO_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          changelog-body: ${{ needs.changelog.outputs.content }}
+
+  # Dry-run validation
+  dry-run:
+    name: Release (Dry Run)
+    needs: [prepare, build, changelog]
+    if: needs.prepare.outputs.dry-run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/release
+        with:
+          version: ${{ needs.prepare.outputs.version }}
+          dry-run: 'true'

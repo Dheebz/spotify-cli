@@ -4,6 +4,7 @@
 
 mod auth;
 mod browse;
+mod daemon;
 mod library;
 mod media;
 mod player;
@@ -12,6 +13,7 @@ mod user;
 
 pub use auth::{AuthCommand, PinCommand};
 pub use browse::{CategoryCommand, FollowCommand};
+pub use daemon::DaemonCommand;
 pub use library::LibraryCommand;
 pub use media::{AlbumCommand, AudiobookCommand, ChapterCommand, EpisodeCommand, ShowCommand};
 pub use player::{DevicesCommand, PlayerCommand, QueueCommand};

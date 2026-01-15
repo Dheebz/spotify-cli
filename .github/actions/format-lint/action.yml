@@ -1,0 +1,33 @@
+name: 'Format & Lint'
+description: 'Run cargo fmt and clippy'
+
+inputs:
+  check-only:
+    description: 'Only check formatting (no fix)'
+    required: false
+    default: 'true'
+  fail-on-warnings:
+    description: 'Fail on clippy warnings'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Rust
+      uses: ./.github/actions/setup-rust
+      with:
+        components: 'rustfmt,clippy'
+
+    - name: Check formatting
+      shell: bash
+      run: cargo fmt --all -- --check
+
+    - name: Run clippy
+      shell: bash
+      run: |
+        CLIPPY_FLAGS=""
+        if [ "${{ inputs.fail-on-warnings }}" = "true" ]; then
+          CLIPPY_FLAGS="-D warnings"
+        fi
+        cargo clippy --all-targets --all-features -- $CLIPPY_FLAGS
