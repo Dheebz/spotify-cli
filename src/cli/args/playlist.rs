@@ -121,4 +121,13 @@ pub enum PlaylistCommand {
         /// Spotify username
         user_id: String,
     },
+    /// Remove duplicate tracks from a playlist (alias: dedup)
+    #[command(alias = "dedup")]
+    Deduplicate {
+        /// Playlist ID, URL, or pin alias
+        playlist: String,
+        /// Show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
 }

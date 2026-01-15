@@ -32,6 +32,13 @@ pub const SEARCH_RESULT_KEYS: &[&str] = &[
 /// * `query` - Search query
 /// * `types` - Optional list of types to search (defaults to all)
 /// * `limit` - Optional limit per type (default 20, max 50)
+/// * `market` - Optional market (ISO 3166-1 alpha-2 country code) for content availability
+///
+/// # Market Parameter
+///
+/// The market parameter is important for podcast/episode searches. Without it,
+/// the Spotify API may return incomplete episode data (missing show information).
+/// When provided, episodes will include their parent show's name and other metadata.
 ///
 /// # Spotify API Quirk Workaround
 ///
@@ -55,6 +62,7 @@ pub async fn search(
     query: &str,
     types: Option<&[&str]>,
     limit: Option<u8>,
+    market: Option<&str>,
 ) -> Result<Option<Value>, HttpError> {
     let type_str = types
         .map(|t| t.join(","))
@@ -68,11 +76,11 @@ pub async fn search(
     let api_limit = if requested_limit == 1 { 2 } else { requested_limit };
     let needs_truncation = requested_limit == 1;
 
-    let encoded_query = urlencoding::encode(query);
     let endpoint = Endpoint::Search {
-        query: &encoded_query,
+        query,
         types: &type_str,
         limit: api_limit,
+        market,
     }.path();
 
     let response = client.get(&endpoint).await?;

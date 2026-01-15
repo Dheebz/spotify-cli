@@ -157,6 +157,10 @@ impl Dispatcher {
                     .and_then(|p| p.get("play"))
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
+                let sort = params
+                    .and_then(|p| p.get("sort"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
 
                 let filters = SearchFilters {
                     artist: params
@@ -197,7 +201,7 @@ impl Dispatcher {
                         .unwrap_or(false),
                 };
 
-                commands::search_command(query, &types, limit, pins_only, exact, filters, play)
+                commands::search_command(query, &types, limit, pins_only, exact, filters, play, sort)
                     .await
             }
 

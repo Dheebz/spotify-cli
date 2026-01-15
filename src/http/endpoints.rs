@@ -80,7 +80,7 @@ pub enum Endpoint<'a> {
 
     Markets,
 
-    Search { query: &'a str, types: &'a str, limit: u8 },
+    Search { query: &'a str, types: &'a str, limit: u8, market: Option<&'a str> },
 
     Show { id: &'a str },
     Shows { ids: &'a str },
@@ -218,7 +218,14 @@ impl<'a> Endpoint<'a> {
                 query,
                 types,
                 limit,
-            } => format!("/search?q={}&type={}&limit={}", encode(query), types, limit),
+                market,
+            } => {
+                let base = format!("/search?q={}&type={}&limit={}", encode(query), types, limit);
+                match market {
+                    Some(m) => format!("{}&market={}", base, m),
+                    None => base,
+                }
+            }
 
             Endpoint::Show { id } => format!("/shows/{}", id),
             Endpoint::Shows { ids } => format!("/shows?ids={}", ids),
@@ -465,10 +472,16 @@ mod tests {
 
     #[test]
     fn search_encodes_query() {
-        let path = Endpoint::Search { query: "hello world", types: "track", limit: 20 }.path();
+        let path = Endpoint::Search { query: "hello world", types: "track", limit: 20, market: None }.path();
         assert!(path.contains("hello%20world") || path.contains("hello+world"));
         assert!(path.contains("type=track"));
         assert!(path.contains("limit=20"));
+    }
+
+    #[test]
+    fn search_includes_market() {
+        let path = Endpoint::Search { query: "test", types: "track", limit: 20, market: Some("US") }.path();
+        assert!(path.contains("market=US"));
     }
 
     #[test]

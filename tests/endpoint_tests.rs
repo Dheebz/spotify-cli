@@ -884,7 +884,7 @@ mod search_endpoints {
             .mount(&server)
             .await;
 
-        let result = search::search(&api, "test query", Some(&["track"]), Some(20)).await;
+        let result = search::search(&api, "test query", Some(&["track"]), Some(20), None).await;
         assert!(result.is_ok());
     }
 
@@ -902,7 +902,7 @@ mod search_endpoints {
             .mount(&server)
             .await;
 
-        let result = search::search(&api, "beatles", Some(&["track", "artist", "album"]), Some(20)).await;
+        let result = search::search(&api, "beatles", Some(&["track", "artist", "album"]), Some(20), None).await;
         assert!(result.is_ok());
     }
 }

@@ -835,7 +835,7 @@ mod search_tests {
             .await;
 
         let types: &[&str] = &["track"];
-        let result = search::search(&api, "test query", Some(types), Some(20)).await;
+        let result = search::search(&api, "test query", Some(types), Some(20), None).await;
         assert!(result.is_ok());
         let payload = result.unwrap().unwrap();
         assert!(!payload["tracks"]["items"].as_array().unwrap().is_empty());
@@ -857,7 +857,7 @@ mod search_tests {
             .await;
 
         let types: &[&str] = &["track", "album", "artist"];
-        let result = search::search(&api, "query", Some(types), Some(20)).await;
+        let result = search::search(&api, "query", Some(types), Some(20), None).await;
         assert!(result.is_ok());
         let payload = result.unwrap().unwrap();
         assert!(payload["tracks"].is_object());
@@ -878,7 +878,7 @@ mod search_tests {
             .await;
 
         let types: &[&str] = &["track"];
-        let result = search::search(&api, "xyznonexistent", Some(types), Some(20)).await;
+        let result = search::search(&api, "xyznonexistent", Some(types), Some(20), None).await;
         assert!(result.is_ok());
         let payload = result.unwrap().unwrap();
         assert_eq!(payload["tracks"]["items"].as_array().unwrap().len(), 0);

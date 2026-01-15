@@ -1,8 +1,9 @@
 use crate::endpoints::playlists::{
     add_items_to_playlist, change_playlist_details, create_playlist, follow_playlist,
-    get_current_user_playlists, get_playlist, get_playlist_cover_image, get_users_playlists,
-    remove_items_from_playlist, unfollow_playlist, update_playlist_items,
+    get_current_user_playlists, get_playlist, get_playlist_cover_image, get_playlist_items,
+    get_users_playlists, remove_items_from_playlist, unfollow_playlist, update_playlist_items,
 };
+use std::collections::HashSet;
 use crate::endpoints::user::get_current_user;
 use crate::io::output::{ErrorKind, Response};
 use crate::storage::pins::{PinStore, ResourceType};
@@ -18,6 +19,67 @@ fn resolve_playlist_id(input: &str) -> Result<String, Response> {
                 return Ok(pin.id.clone());
             }
     Ok(extract_id(input))
+}
+
+/// Resolve a playlist identifier to a Spotify ID (async version with name lookup)
+/// Accepts: ID, URL, pin alias, or playlist name
+async fn resolve_playlist_id_async(
+    client: &crate::http::api::SpotifyApi,
+    input: &str,
+) -> Result<String, Response> {
+    // First try pin alias
+    if let Ok(store) = PinStore::new()
+        && let Some(pin) = store.find_by_alias(input)
+            && pin.resource_type == ResourceType::Playlist {
+                return Ok(pin.id.clone());
+            }
+
+    // Check if it looks like a valid ID or URL (no spaces, valid base62 chars)
+    let extracted = extract_id(input);
+    if !input.contains(' ') && extracted.chars().all(|c| c.is_alphanumeric()) {
+        return Ok(extracted);
+    }
+
+    // Otherwise, search user's playlists by name
+    let mut offset = 0u32;
+    let limit = 50u8;
+    let search_name = input.to_lowercase();
+
+    loop {
+        match get_current_user_playlists::get_current_user_playlists(client, Some(limit), Some(offset)).await {
+            Ok(Some(page)) => {
+                if let Some(items) = page.get("items").and_then(|i| i.as_array()) {
+                    // Look for exact match first, then partial match
+                    for playlist in items {
+                        if let Some(name) = playlist.get("name").and_then(|n| n.as_str()) {
+                            if name.to_lowercase() == search_name {
+                                if let Some(id) = playlist.get("id").and_then(|i| i.as_str()) {
+                                    return Ok(id.to_string());
+                                }
+                            }
+                        }
+                    }
+
+                    // Check if there are more pages
+                    let total = page.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+                    offset += limit as u32;
+                    if offset >= total as u32 || items.is_empty() {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            Ok(None) => break,
+            Err(e) => return Err(Response::from_http_error(&e, "Failed to search playlists")),
+        }
+    }
+
+    Err(Response::err(
+        404,
+        format!("Playlist '{}' not found. Use playlist ID, URL, or exact name.", input),
+        ErrorKind::NotFound,
+    ))
 }
 
 pub async fn playlist_list(limit: u8, offset: u32) -> Response {
@@ -313,5 +375,127 @@ pub async fn playlist_user(user_id: &str) -> Response {
             ),
             Err(e) => Response::from_http_error(&e, "Failed to get user's playlists"),
         }
+    }).await
+}
+
+/// Remove duplicate tracks from a playlist (keeps first occurrence)
+pub async fn playlist_deduplicate(playlist: &str, dry_run: bool) -> Response {
+    let playlist_input = playlist.to_string();
+
+    with_client(|client| async move {
+        // Resolve playlist (supports ID, URL, pin alias, or name)
+        let playlist_id = match resolve_playlist_id_async(&client, &playlist_input).await {
+            Ok(id) => id,
+            Err(e) => return e,
+        };
+
+        // Fetch all tracks with pagination
+        let mut all_tracks: Vec<serde_json::Value> = Vec::new();
+        let mut offset = 0u32;
+        let limit = 50u8;
+
+        loop {
+            match get_playlist_items::get_playlist_items(&client, &playlist_id, Some(limit), Some(offset)).await {
+                Ok(Some(page)) => {
+                    let items = page.get("items").and_then(|i| i.as_array());
+                    match items {
+                        Some(tracks) if !tracks.is_empty() => {
+                            all_tracks.extend(tracks.iter().cloned());
+                            let total = page.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+                            offset += limit as u32;
+                            if offset >= total as u32 {
+                                break;
+                            }
+                        }
+                        _ => break,
+                    }
+                }
+                Ok(None) => break,
+                Err(e) => return Response::from_http_error(&e, "Failed to fetch playlist tracks"),
+            }
+        }
+
+        if all_tracks.is_empty() {
+            return Response::success(200, "Playlist is empty, nothing to deduplicate");
+        }
+
+        // Find unique tracks (first occurrence) and duplicates
+        let mut seen_ids: HashSet<String> = HashSet::new();
+        let mut unique_uris: Vec<String> = Vec::new();
+        let mut duplicate_names: Vec<String> = Vec::new();
+
+        for item in all_tracks.iter() {
+            if let Some(track) = item.get("track") {
+                let id = track.get("id").and_then(|i| i.as_str()).unwrap_or("");
+                let uri = track.get("uri").and_then(|u| u.as_str()).unwrap_or("");
+                let name = track.get("name").and_then(|n| n.as_str()).unwrap_or("Unknown");
+
+                if !id.is_empty() && !uri.is_empty() {
+                    if seen_ids.contains(id) {
+                        duplicate_names.push(name.to_string());
+                    } else {
+                        seen_ids.insert(id.to_string());
+                        unique_uris.push(uri.to_string());
+                    }
+                }
+            }
+        }
+
+        if duplicate_names.is_empty() {
+            return Response::success(200, "No duplicates found");
+        }
+
+        let duplicate_count = duplicate_names.len();
+
+        if dry_run {
+            return Response::success_with_payload(
+                200,
+                format!("[DRY RUN] Would remove {} duplicate(s) from playlist", duplicate_count),
+                serde_json::json!({
+                    "dry_run": true,
+                    "action": "deduplicate",
+                    "playlist_id": playlist_id,
+                    "duplicate_count": duplicate_count,
+                    "duplicates": duplicate_names,
+                    "unique_count": unique_uris.len()
+                }),
+            );
+        }
+
+        // Strategy: Clear playlist and re-add only unique tracks
+        // This works around Spotify API's position-based removal issues
+
+        // Step 1: Get all current URIs to remove
+        let all_uris: Vec<String> = all_tracks
+            .iter()
+            .filter_map(|item| {
+                item.get("track")
+                    .and_then(|t| t.get("uri"))
+                    .and_then(|u| u.as_str())
+                    .map(String::from)
+            })
+            .collect();
+
+        // Step 2: Remove all tracks
+        if let Err(e) = remove_items_from_playlist::remove_items_from_playlist(&client, &playlist_id, &all_uris).await {
+            return Response::from_http_error(&e, "Failed to clear playlist");
+        }
+
+        // Step 3: Re-add only unique tracks
+        if !unique_uris.is_empty() {
+            if let Err(e) = add_items_to_playlist::add_items_to_playlist(&client, &playlist_id, &unique_uris, None).await {
+                return Response::from_http_error(&e, "Failed to restore unique tracks");
+            }
+        }
+
+        Response::success_with_payload(
+            200,
+            format!("Removed {} duplicate(s), {} unique track(s) remain", duplicate_count, unique_uris.len()),
+            serde_json::json!({
+                "removed_count": duplicate_count,
+                "removed": duplicate_names,
+                "remaining_count": unique_uris.len()
+            }),
+        )
     }).await
 }

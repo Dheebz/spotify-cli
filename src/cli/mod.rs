@@ -109,6 +109,9 @@ pub enum Command {
         /// Play the first result
         #[arg(long, short = 'p')]
         play: bool,
+        /// Sort results by fuzzy match score
+        #[arg(long, short = 's')]
+        sort: bool,
     },
     /// Manage playlists (alias: pl)
     #[command(alias = "pl")]

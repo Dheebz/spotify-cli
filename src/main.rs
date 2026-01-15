@@ -85,6 +85,7 @@ async fn main() {
             new,
             hipster,
             play,
+            sort,
         } => {
             let filters = commands::SearchFilters {
                 artist,
@@ -97,7 +98,7 @@ async fn main() {
                 new,
                 hipster,
             };
-            commands::search_command(&query, &types, limit, pins_only, exact, filters, play).await
+            commands::search_command(&query, &types, limit, pins_only, exact, filters, play, sort).await
         }
         Command::Playlist { command } => match command {
             PlaylistCommand::List { limit, offset } => {
@@ -161,6 +162,9 @@ async fn main() {
             }
             PlaylistCommand::User { user_id } => {
                 commands::playlist_user(&user_id).await
+            }
+            PlaylistCommand::Deduplicate { playlist, dry_run } => {
+                commands::playlist_deduplicate(&playlist, dry_run).await
             }
         },
         Command::Library { command } => match command {

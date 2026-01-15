@@ -11,15 +11,87 @@ mod pins;
 mod playback;
 mod scoring;
 
+use crate::endpoints::episodes::get_several_episodes;
 use crate::endpoints::search;
+use crate::endpoints::user::get_current_user;
+use crate::http::api::SpotifyApi;
 use crate::io::output::{ErrorKind, Response};
 use crate::storage::config::Config;
+use serde_json::Value;
 
 use super::{with_client, SearchFilters};
 use filters::{extract_first_uri, filter_exact_matches, filter_ghost_entries};
 use pins::search_pins;
 use playback::play_uri;
 use scoring::add_fuzzy_scores;
+
+/// Enrich episodes with show information by fetching full episode details.
+/// Uses a show cache to avoid duplicating show data for episodes from the same show.
+async fn enrich_episodes(client: &SpotifyApi, results: &mut Value) {
+    let episodes = match results
+        .get("episodes")
+        .and_then(|e| e.get("items"))
+        .and_then(|i| i.as_array())
+    {
+        Some(eps) => eps,
+        None => return,
+    };
+
+    // Collect IDs of episodes missing show info
+    let ids: Vec<String> = episodes
+        .iter()
+        .filter(|ep| ep.get("show").is_none() || ep.get("show").unwrap().is_null())
+        .filter_map(|ep| ep.get("id").and_then(|id| id.as_str()).map(String::from))
+        .collect();
+
+    if ids.is_empty() {
+        return;
+    }
+
+    // Fetch full episode details in one batch call
+    let full_episodes = match get_several_episodes::get_several_episodes(client, &ids).await {
+        Ok(Some(data)) => data,
+        _ => return,
+    };
+
+    // Build a cache of show_id -> show info (each unique show stored once)
+    let mut show_cache: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+    // Map episode_id -> show_id for lookup
+    let mut episode_show_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+    if let Some(eps) = full_episodes.get("episodes").and_then(|e| e.as_array()) {
+        for ep in eps {
+            if let (Some(ep_id), Some(show)) = (
+                ep.get("id").and_then(|id| id.as_str()),
+                ep.get("show"),
+            ) {
+                if let Some(show_id) = show.get("id").and_then(|id| id.as_str()) {
+                    // Cache show by its ID (only store once per unique show)
+                    show_cache.entry(show_id.to_string()).or_insert_with(|| show.clone());
+                    // Map episode to its show
+                    episode_show_map.insert(ep_id.to_string(), show_id.to_string());
+                }
+            }
+        }
+    }
+
+    // Merge show info back into search results using the cache
+    if let Some(items) = results
+        .get_mut("episodes")
+        .and_then(|e| e.get_mut("items"))
+        .and_then(|i| i.as_array_mut())
+    {
+        for ep in items.iter_mut() {
+            if let Some(ep_id) = ep.get("id").and_then(|id| id.as_str()) {
+                if let Some(show_id) = episode_show_map.get(ep_id) {
+                    if let Some(show) = show_cache.get(show_id) {
+                        ep.as_object_mut().map(|obj| obj.insert("show".to_string(), show.clone()));
+                    }
+                }
+            }
+        }
+    }
+}
 
 pub async fn search_command(
     query: &str,
@@ -29,6 +101,7 @@ pub async fn search_command(
     exact: bool,
     filters: SearchFilters,
     play: bool,
+    sort: bool,
 ) -> Response {
     // Build the full query with filters
     let full_query = filters.build_query(query);
@@ -73,11 +146,24 @@ pub async fn search_command(
             .as_ref()
             .map(|c| c.fuzzy().clone())
             .unwrap_or_default();
-        let sort_by_score = config.as_ref().map(|c| c.sort_by_score()).unwrap_or(false);
+        // Use --sort flag or fall back to config setting
+        let sort_by_score = sort || config.as_ref().map(|c| c.sort_by_score()).unwrap_or(false);
 
-        match search::search(&client, &full_query, Some(&type_strs), Some(limit)).await {
+        // Fetch user's market for proper podcast/episode results
+        let market = match get_current_user::get_current_user(&client).await {
+            Ok(Some(user)) => user
+                .get("country")
+                .and_then(|c| c.as_str())
+                .map(String::from),
+            _ => None,
+        };
+
+        match search::search(&client, &full_query, Some(&type_strs), Some(limit), market.as_deref()).await {
             Ok(Some(mut spotify_results)) => {
                 filter_ghost_entries(&mut spotify_results);
+
+                // Enrich episodes with show info (search API returns simplified objects)
+                enrich_episodes(&client, &mut spotify_results).await;
 
                 if exact {
                     filter_exact_matches(&mut spotify_results, &query);

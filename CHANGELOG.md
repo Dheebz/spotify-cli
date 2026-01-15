@@ -95,6 +95,26 @@ Efficient aliases for power users:
 
 Auto-generated completions for bash, zsh, fish, and PowerShell.
 
+### RPC Daemon
+
+Background daemon for external control via JSON-RPC 2.0:
+
+- **Unix Sockets**: Low-latency IPC at `~/.config/spotify-cli/daemon.sock`
+- **Full CLI Parity**: All 68 CLI commands available as RPC methods
+- **Real-time Events**: Subscribe to track changes, playback state, volume, shuffle, repeat
+- **Integration Ready**: Examples for shell scripts, Python, Neovim/Lua
+- **Daemon Management**: `daemon start`, `daemon stop`, `daemon status`, `daemon run`
+
+```bash
+# Start daemon
+spotify-cli daemon start
+
+# Control via socket
+echo '{"jsonrpc":"2.0","method":"player.next","id":1}' | nc -U ~/.config/spotify-cli/daemon.sock
+```
+
+See [docs/RPC.md](docs/RPC.md) for the full API reference.
+
 ### Build
 
 - Cross-platform binaries: macOS (Intel + Apple Silicon), Windows, Linux (x86_64 + ARM64)
