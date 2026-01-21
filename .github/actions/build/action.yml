@@ -1,0 +1,82 @@
+name: 'Build'
+description: 'Build and package binary for a specific target'
+
+inputs:
+  target:
+    description: 'Target triple (e.g., x86_64-unknown-linux-gnu)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get version from tag
+      id: version
+      shell: bash
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        else
+          echo "version=dev" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Setup Rust
+      uses: ./.github/actions/setup-rust
+      with:
+        target: ${{ inputs.target }}
+
+    # Linux ARM64 cross-compilation
+    - name: Install cross-compilation tools (Linux ARM64)
+      if: inputs.target == 'aarch64-unknown-linux-gnu'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+
+    - name: Configure linker (Linux ARM64)
+      if: inputs.target == 'aarch64-unknown-linux-gnu'
+      shell: bash
+      run: |
+        mkdir -p .cargo
+        cat >> .cargo/config.toml << EOF
+        [target.aarch64-unknown-linux-gnu]
+        linker = "aarch64-linux-gnu-gcc"
+        EOF
+
+    # Windows ARM64 cross-compilation
+    - name: Setup Windows ARM64 target
+      if: inputs.target == 'aarch64-pc-windows-msvc'
+      shell: pwsh
+      run: |
+        rustup target add aarch64-pc-windows-msvc
+
+    - name: Build
+      shell: bash
+      run: cargo build --release --target ${{ inputs.target }}
+
+    # Package Unix builds
+    - name: Package (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        mkdir -p dist
+        cp target/${{ inputs.target }}/release/spotify-cli dist/
+        cd dist
+        tar -czvf spotify-cli-${{ steps.version.outputs.version }}-${{ inputs.target }}.tar.gz spotify-cli
+        rm spotify-cli
+
+    # Package Windows builds
+    - name: Package (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path dist
+        Copy-Item "target/${{ inputs.target }}/release/spotify-cli.exe" -Destination dist/
+        Compress-Archive -Path dist/spotify-cli.exe -DestinationPath "dist/spotify-cli-${{ steps.version.outputs.version }}-${{ inputs.target }}.zip"
+        Remove-Item dist/spotify-cli.exe
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: spotify-cli-${{ inputs.target }}
+        path: dist/*
+        retention-days: 7
