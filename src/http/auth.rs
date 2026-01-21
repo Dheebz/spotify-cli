@@ -1,0 +1,179 @@
+//! Spotify authentication endpoints.
+//!
+//! Handles token exchange and refresh via accounts.spotify.com.
+
+use thiserror::Error;
+
+use super::client::HttpClient;
+use crate::constants::SPOTIFY_AUTH_BASE_URL;
+
+/// Errors from authentication requests.
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Request failed: {0}")]
+    Request(#[from] reqwest::Error),
+
+    #[error("Token exchange failed ({status}): {message}")]
+    TokenExchange { status: u16, message: String },
+}
+
+/// Spotify authentication client.
+///
+/// Handles token operations via accounts.spotify.com/api/token.
+pub struct SpotifyAuth {
+    http: HttpClient,
+    base_url: String,
+}
+
+impl SpotifyAuth {
+    /// Create a new authentication client.
+    pub fn new() -> Self {
+        Self {
+            http: HttpClient::new(),
+            base_url: SPOTIFY_AUTH_BASE_URL.to_string(),
+        }
+    }
+
+    /// Create a new authentication client with a custom base URL.
+    ///
+    /// Useful for testing with mock servers.
+    pub fn with_base_url(base_url: String) -> Self {
+        Self {
+            http: HttpClient::new(),
+            base_url,
+        }
+    }
+
+    /// Build a URL for the Spotify accounts endpoint.
+    pub fn url(path: &str) -> String {
+        format!("{}{}", SPOTIFY_AUTH_BASE_URL, path)
+    }
+
+    /// Build a URL using this client's base URL.
+    fn endpoint(&self, path: &str) -> String {
+        format!("{}{}", self.base_url, path)
+    }
+
+    /// Exchange authorization code for tokens (PKCE flow)
+    pub async fn exchange_code(
+        &self,
+        client_id: &str,
+        code: &str,
+        redirect_uri: &str,
+        code_verifier: &str,
+    ) -> Result<serde_json::Value, AuthError> {
+        let params = [
+            ("grant_type", "authorization_code"),
+            ("code", code),
+            ("redirect_uri", redirect_uri),
+            ("client_id", client_id),
+            ("code_verifier", code_verifier),
+        ];
+
+        self.token_request(&params).await
+    }
+
+    /// Refresh an access token
+    pub async fn refresh_token(
+        &self,
+        client_id: &str,
+        refresh_token: &str,
+    ) -> Result<serde_json::Value, AuthError> {
+        let params = [
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh_token),
+            ("client_id", client_id),
+        ];
+
+        self.token_request(&params).await
+    }
+
+    async fn token_request(&self, params: &[(&str, &str)]) -> Result<serde_json::Value, AuthError> {
+        let response = self
+            .http
+            .inner()
+            .post(self.endpoint("/api/token"))
+            .form(params)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(AuthError::TokenExchange {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let json: serde_json::Value = response.json().await?;
+        Ok(json)
+    }
+}
+
+impl Default for SpotifyAuth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auth_error_display() {
+        let err = AuthError::TokenExchange {
+            status: 400,
+            message: "invalid_grant".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("400"));
+        assert!(display.contains("invalid_grant"));
+    }
+
+    #[test]
+    fn auth_error_token_exchange_status() {
+        let err = AuthError::TokenExchange {
+            status: 401,
+            message: "unauthorized".to_string(),
+        };
+        match err {
+            AuthError::TokenExchange { status, message } => {
+                assert_eq!(status, 401);
+                assert_eq!(message, "unauthorized");
+            }
+            _ => panic!("Wrong error type"),
+        }
+    }
+
+    #[test]
+    fn spotify_auth_url_building() {
+        let url = SpotifyAuth::url("/api/token");
+        assert!(url.contains("/api/token"));
+        assert!(url.starts_with("https://"));
+    }
+
+    #[test]
+    fn spotify_auth_default() {
+        let _auth = SpotifyAuth::default();
+        // Just verify it creates successfully
+    }
+
+    #[test]
+    fn spotify_auth_new() {
+        let _auth = SpotifyAuth::new();
+        // Just verify it creates successfully
+    }
+
+    #[test]
+    fn auth_error_debug() {
+        let err = AuthError::TokenExchange {
+            status: 500,
+            message: "server error".to_string(),
+        };
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("TokenExchange"));
+        assert!(debug.contains("500"));
+    }
+}
