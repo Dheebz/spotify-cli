@@ -5,7 +5,6 @@
 **Control Spotify from your terminal**
 
 [![Crates.io](https://img.shields.io/crates/v/spotify-cli.svg)](https://crates.io/crates/spotify-cli)
-[![Downloads](https://img.shields.io/crates/d/spotify-cli.svg)](https://crates.io/crates/spotify-cli)
 [![License](https://img.shields.io/crates/l/spotify-cli.svg)](LICENSE)
 [![CI](https://github.com/dheebz/spotify-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dheebz/spotify-cli/actions/workflows/ci.yml)
 
