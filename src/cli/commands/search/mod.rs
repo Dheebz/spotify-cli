@@ -74,15 +74,14 @@ async fn enrich_episodes(client: &SpotifyApi, results: &mut Value) {
         for ep in eps {
             if let (Some(ep_id), Some(show)) =
                 (ep.get("id").and_then(|id| id.as_str()), ep.get("show"))
+                && let Some(show_id) = show.get("id").and_then(|id| id.as_str())
             {
-                if let Some(show_id) = show.get("id").and_then(|id| id.as_str()) {
-                    // Cache show by its ID (only store once per unique show)
-                    show_cache
-                        .entry(show_id.to_string())
-                        .or_insert_with(|| show.clone());
-                    // Map episode to its show
-                    episode_show_map.insert(ep_id.to_string(), show_id.to_string());
-                }
+                // Cache show by its ID (only store once per unique show)
+                show_cache
+                    .entry(show_id.to_string())
+                    .or_insert_with(|| show.clone());
+                // Map episode to its show
+                episode_show_map.insert(ep_id.to_string(), show_id.to_string());
             }
         }
     }
@@ -94,13 +93,12 @@ async fn enrich_episodes(client: &SpotifyApi, results: &mut Value) {
         .and_then(|i| i.as_array_mut())
     {
         for ep in items.iter_mut() {
-            if let Some(ep_id) = ep.get("id").and_then(|id| id.as_str()) {
-                if let Some(show_id) = episode_show_map.get(ep_id) {
-                    if let Some(show) = show_cache.get(show_id) {
-                        ep.as_object_mut()
-                            .map(|obj| obj.insert("show".to_string(), show.clone()));
-                    }
-                }
+            if let Some(ep_id) = ep.get("id").and_then(|id| id.as_str())
+                && let Some(show_id) = episode_show_map.get(ep_id)
+                && let Some(show) = show_cache.get(show_id)
+            {
+                ep.as_object_mut()
+                    .map(|obj| obj.insert("show".to_string(), show.clone()));
             }
         }
     }

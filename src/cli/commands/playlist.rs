@@ -59,12 +59,11 @@ async fn resolve_playlist_id_async(
                 if let Some(items) = page.get("items").and_then(|i| i.as_array()) {
                     // Look for exact match first, then partial match
                     for playlist in items {
-                        if let Some(name) = playlist.get("name").and_then(|n| n.as_str()) {
-                            if name.to_lowercase() == search_name {
-                                if let Some(id) = playlist.get("id").and_then(|i| i.as_str()) {
-                                    return Ok(id.to_string());
-                                }
-                            }
+                        if let Some(name) = playlist.get("name").and_then(|n| n.as_str())
+                            && name.to_lowercase() == search_name
+                            && let Some(id) = playlist.get("id").and_then(|i| i.as_str())
+                        {
+                            return Ok(id.to_string());
                         }
                     }
 
@@ -613,17 +612,16 @@ pub async fn playlist_deduplicate(playlist: &str, dry_run: bool) -> Response {
         }
 
         // Step 3: Re-add only unique tracks
-        if !unique_uris.is_empty() {
-            if let Err(e) = add_items_to_playlist::add_items_to_playlist(
+        if !unique_uris.is_empty()
+            && let Err(e) = add_items_to_playlist::add_items_to_playlist(
                 &client,
                 &playlist_id,
                 &unique_uris,
                 None,
             )
             .await
-            {
-                return Response::from_http_error(&e, "Failed to restore unique tracks");
-            }
+        {
+            return Response::from_http_error(&e, "Failed to restore unique tracks");
         }
 
         Response::success_with_payload(
