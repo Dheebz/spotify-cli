@@ -6,7 +6,7 @@ use crate::io::common::extract_artist_names;
 
 pub fn format_saved_tracks(items: &[Value]) {
     println!("Saved Tracks:");
-    for (i, item) in items.iter().take(20).enumerate() {
+    for (i, item) in items.iter().enumerate() {
         if let Some(track) = item.get("track") {
             let name = track
                 .get("name")
