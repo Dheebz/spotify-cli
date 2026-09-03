@@ -36,7 +36,7 @@ pub async fn remove_items_at_positions(
 ) -> Result<Option<Value>, HttpError> {
     // Sort by position descending - remove from end first to avoid index shifting
     let mut sorted_items: Vec<(String, usize)> = items.to_vec();
-    sorted_items.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_items.sort_by_key(|item| std::cmp::Reverse(item.1));
 
     // Send each item separately to avoid the URI-based removal behavior
     let tracks: Vec<serde_json::Value> = sorted_items
