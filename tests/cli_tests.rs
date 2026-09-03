@@ -6,8 +6,10 @@
 use predicates::prelude::*;
 
 fn spotify_cli() -> assert_cmd::Command {
-    #[allow(deprecated)]
-    assert_cmd::Command::cargo_bin("spotify-cli").unwrap()
+    // Cargo provides the executable path for integration tests.  Do not infer
+    // it relative to the test executable: that breaks with custom build
+    // directories and Cargo's new build-dir layout.
+    assert_cmd::cargo::cargo_bin_cmd!("spotify-cli")
 }
 
 // ============================================================================
